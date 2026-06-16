@@ -1,3 +1,4 @@
+// src/features/analytics/controllers/analytics.controller.js
 const asyncHandler = require('../../../core/utils/asyncHandler');
 const { HttpStatus } = require('../../../shared/constants/httpStatus.constants');
 

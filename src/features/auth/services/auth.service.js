@@ -47,7 +47,7 @@ class AuthService {
     if (existingEmail) throw new ConflictError('Email already registered');
     if (existingPhone) throw new ConflictError('Phone number already registered');
 
-    const user = await this.userRepository.create(userData);
+    const user = await this.userRepository.create(userData); // Create a new user. 
     const tokens = await this._issueTokens(user);
 
     await this.auditService.log({
@@ -230,14 +230,14 @@ class AuthService {
    * Validates whether the requesting user can assign the given role.
    */
   _validateRegistrationRole(role, requestedBy) {
-    if (ADMIN_ONLY_ROLES.includes(role)) {
-      if (!requestedBy || ![UserRole.SUPER_ADMIN, UserRole.ADMIN].includes(requestedBy.role)) {
+    if (ADMIN_ONLY_ROLES.includes(role)) { // Check if the role is an admin only role to create an admin role.
+      if (!requestedBy || ![UserRole.SUPER_ADMIN, UserRole.ADMIN].includes(requestedBy.role)) { // Check if the requested by user is a super admin or admin to create an admin role. 
         throw new ForbiddenError('Insufficient permissions to create this role');
       }
       return;
     }
 
-    if (!SELF_REGISTER_ROLES.includes(role)) {
+    if (!SELF_REGISTER_ROLES.includes(role)) { // Check if the role is in the self register roles to register a user.
       throw new ForbiddenError('Invalid role for registration');
     }
   }
