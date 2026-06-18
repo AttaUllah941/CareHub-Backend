@@ -1,6 +1,5 @@
 const crypto = require('crypto');
 const config = require('../../../config');
-const logger = require('../../../core/utils/logger');
 const { PaymentGateway } = require('../../../shared/enums/paymentGateway.enum');
 
 class JazzCashGatewayService {
@@ -45,7 +44,6 @@ class JazzCashGatewayService {
 
     if (this.cfg.sandbox || !config.isProduction) {
       const redirectUrl = `${config.frontend.url}/patient/payments/callback/jazzcash?pp_TxnRefNo=${orderId}&pp_ResponseCode=000&pp_SecureHash=${secureHash}&paymentId=${paymentId}`;
-      logger.info(`[JazzCash DEV] Initiated payment ${orderId} amount ${amount} ${currency}`);
       return {
         gatewayOrderId: orderId,
         redirectUrl,
@@ -83,7 +81,6 @@ class JazzCashGatewayService {
     const refundId = `JC-RF-${payment.id || payment._id}-${Date.now()}`;
 
     if (this.cfg.sandbox || !config.isProduction) {
-      logger.info(`[JazzCash DEV] Refund ${refundId} for ${amount} ${payment.currency}`);
       return {
         gatewayRefundId: refundId,
         status: 'SUCCEEDED',

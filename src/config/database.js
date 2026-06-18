@@ -14,8 +14,6 @@ const connectDatabase = async () => {
       socketTimeoutMS: 45000,
     });
 
-    logger.info('MongoDB connected successfully');
-
     mongoose.connection.on('error', (err) => {
       logger.error('MongoDB connection error:', err);
     });
@@ -31,7 +29,6 @@ const connectDatabase = async () => {
 
 const disconnectDatabase = async () => {
   await mongoose.disconnect();
-  logger.info('MongoDB disconnected');
 };
 
 module.exports = { connectDatabase, disconnectDatabase };

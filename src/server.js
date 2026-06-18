@@ -2,7 +2,6 @@ const http = require('http');
 const createApp = require('./app');
 const config = require('./config');
 const { connectDatabase } = require('./config/database');
-const { connectRedis } = require('./config/redis');
 const { initializeSocket } = require('./config/socket');
 const { seedRolesAndPermissions } = require('./features/roles/seeds');
 const { seedMedicalSpecialties } = require('./features/medical-specialties/seeds');
@@ -13,7 +12,7 @@ const logger = require('./core/utils/logger');
 
 /**
  * Application entry point.
- * Bootstraps database, cache, HTTP server, and WebSocket layer.
+ * Bootstraps database, HTTP server, and WebSocket layer.
  */
 const startServer = async () => {
   await connectDatabase();
@@ -21,13 +20,6 @@ const startServer = async () => {
   await seedMedicalSpecialties();
   await seedLanguages();
   await seedClinics();
-
-  const redis = connectRedis();
-  try {
-    await redis.connect();
-  } catch {
-    logger.warn('Redis unavailable — running without cache (dev mode)');
-  }
 
   const app = createApp();
   const httpServer = http.createServer(app);
@@ -37,22 +29,16 @@ const startServer = async () => {
   const notificationReminderService = container.resolve('notificationReminderService');
   notificationReminderService.start();
 
-  httpServer.listen(config.port, () => {
-    logger.info(`CareHub API running on port ${config.port}`);
-    logger.info(`Swagger docs: http://localhost:${config.port}${config.apiPrefix}/docs`);
-    logger.info(`Environment: ${config.env}`);
-  });
+  httpServer.listen(config.port);
 
-  const gracefulShutdown = async (signal) => {
-    logger.info(`${signal} received. Shutting down gracefully...`);
+  const gracefulShutdown = () => {
     httpServer.close(() => {
-      logger.info('HTTP server closed');
       process.exit(0);
     });
   };
 
-  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+  process.on('SIGTERM', gracefulShutdown);
+  process.on('SIGINT', gracefulShutdown);
 };
 
 startServer().catch((err) => {

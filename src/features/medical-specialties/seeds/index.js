@@ -1,6 +1,5 @@
 const Specialty = require('../models/specialty.model');
 const { DEFAULT_SPECIALTIES } = require('./specialties.seed');
-const logger = require('../../../core/utils/logger');
 
 /**
  * Seeds default medical specialties on application startup.
@@ -14,8 +13,6 @@ const seedMedicalSpecialties = async () => {
       { upsert: true, new: true },
     );
   }
-
-  logger.info('Medical specialties seeded successfully');
 };
 
 module.exports = { seedMedicalSpecialties };

@@ -1,6 +1,5 @@
 const Language = require('../models/language.model');
 const { DEFAULT_LANGUAGES } = require('./languages.seed');
-const logger = require('../../../core/utils/logger');
 
 /**
  * Seeds default languages on application startup.
@@ -14,8 +13,6 @@ const seedLanguages = async () => {
       { upsert: true, new: true },
     );
   }
-
-  logger.info('Languages seeded successfully');
 };
 
 module.exports = { seedLanguages };

@@ -6,6 +6,7 @@ class DoctorController {
     this.doctorService = doctorService;
   }
 
+  // Get all doctors
   getDoctors = asyncHandler(async (req, res) => {
     const result = await this.doctorService.getDoctors(req.query, req.user);
     res.status(HttpStatus.OK).json({ success: true, data: result });
@@ -16,6 +17,7 @@ class DoctorController {
     res.status(HttpStatus.OK).json({ success: true, data: result });
   });
 
+  // Get the profile of the authenticated doctor
   getMyProfile = asyncHandler(async (req, res) => {
     const doctor = await this.doctorService.getMyProfile(req.user);
     res.status(HttpStatus.OK).json({ success: true, data: { doctor } });

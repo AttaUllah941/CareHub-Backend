@@ -1,12 +1,10 @@
 const { UnauthorizedError, ForbiddenError } = require('../errors/AppError');
 const { verifyAccessToken } = require('../utils/token.utils');
-const { getRedisClient } = require('../../config/redis');
 const container = require('../container');
 
 /**
  * JWT authentication middleware.
  * Validates Bearer token and attaches decoded user to req.user.
- * Checks Redis blacklist for revoked tokens (logout support).
  */
 const authenticate = async (req, _res, next) => {
   try {
@@ -17,12 +15,6 @@ const authenticate = async (req, _res, next) => {
     }
 
     const token = authHeader.split(' ')[1];
-
-    const redis = getRedisClient();
-    const isBlacklisted = await redis.get(`blacklist:${token}`);
-    if (isBlacklisted) {
-      return next(new UnauthorizedError('Token has been revoked'));
-    }
 
     const decoded = verifyAccessToken(token);
     req.user = { id: decoded.sub, role: decoded.role };

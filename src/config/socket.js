@@ -53,7 +53,6 @@ const initializeSocket = (httpServer) => {
   const chatService = container.resolve('chatService');
   registerChatHandlers(io, chatService);
 
-  logger.info('Socket.IO initialized');
   return io;
 };
 

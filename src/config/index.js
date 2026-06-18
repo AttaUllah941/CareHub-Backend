@@ -22,13 +22,6 @@ const config = Object.freeze({
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '30d',
   },
 
-  redis: {
-    host: process.env.REDIS_HOST || 'localhost',
-    port: parseInt(process.env.REDIS_PORT, 10) || 6379,
-    password: process.env.REDIS_PASSWORD || undefined,
-    keyPrefix: 'carehub:',
-  },
-
   cors: {
     origin: process.env.CORS_ORIGIN || 'http://localhost:4200',
   },
