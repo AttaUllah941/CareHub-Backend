@@ -38,6 +38,7 @@ class AuthController {
   });
 
   refreshToken = asyncHandler(async (req, res) => {
+    logger.info("refresh token request",req.body);
     const { refreshToken } = req.body;
     const result = await this.authService.refreshToken(refreshToken);
 
