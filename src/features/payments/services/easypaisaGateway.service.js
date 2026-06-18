@@ -1,6 +1,5 @@
 const crypto = require('crypto');
 const config = require('../../../config');
-const logger = require('../../../core/utils/logger');
 const { PaymentGateway } = require('../../../shared/enums/paymentGateway.enum');
 
 class EasyPaisaGatewayService {
@@ -49,7 +48,6 @@ class EasyPaisaGatewayService {
 
     if (this.cfg.sandbox || !config.isProduction) {
       const redirectUrl = `${config.frontend.url}/patient/payments/callback/easypaisa?orderId=${orderId}&status=0000&hash=${hash}&paymentId=${paymentId}`;
-      logger.info(`[EasyPaisa DEV] Initiated payment ${orderId} amount ${amount} ${currency}`);
       return {
         gatewayOrderId: orderId,
         redirectUrl,
@@ -78,7 +76,6 @@ class EasyPaisaGatewayService {
     const refundId = `EP-RF-${payment.id || payment._id}-${Date.now()}`;
 
     if (this.cfg.sandbox || !config.isProduction) {
-      logger.info(`[EasyPaisa DEV] Refund ${refundId} for ${amount} ${payment.currency}`);
       return {
         gatewayRefundId: refundId,
         status: 'SUCCEEDED',

@@ -17,6 +17,7 @@ const {
 const router = Router();
 const doctorController = container.resolve('doctorController');
 
+// Get the profile of the authenticated doctor
 router.get(
   '/me',
   authenticate,

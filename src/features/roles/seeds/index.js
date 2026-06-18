@@ -1,7 +1,6 @@
 const Permission = require('../models/permission.model');
 const Role = require('../models/role.model');
 const { DEFAULT_PERMISSIONS, DEFAULT_ROLES } = require('./rolesPermissions.seed');
-const logger = require('../../../core/utils/logger');
 
 /**
  * Seeds default permissions and system roles on application startup.
@@ -42,8 +41,6 @@ const seedRolesAndPermissions = async () => {
       { upsert: true, new: true },
     );
   }
-
-  logger.info('Roles and permissions seeded successfully');
 };
 
 module.exports = { seedRolesAndPermissions };

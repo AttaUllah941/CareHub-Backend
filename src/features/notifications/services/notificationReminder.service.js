@@ -14,8 +14,6 @@ class NotificationReminderService {
         logger.error('Reminder worker error:', err);
       });
     }, intervalMs);
-
-    logger.info('Notification reminder worker started');
   }
 
   stop() {

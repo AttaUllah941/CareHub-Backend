@@ -9,7 +9,6 @@ const {
 const { generateTokens, verifyRefreshToken } = require('../../../core/utils/token.utils');
 const { generatePasswordResetToken } = require('../../../core/utils/crypto.utils');
 const { sendPasswordResetEmail } = require('../../../core/utils/email.utils');
-const { getRedisClient } = require('../../../config/redis');
 const config = require('../../../config');
 const {
   UserRole,
@@ -131,17 +130,13 @@ class AuthService {
   }
 
   /**
-   * Logout — blacklist access token and clear refresh token.
+   * Logout — clear refresh token so new access tokens cannot be issued.
    */
-  async logout(userId, accessToken, context = {}) {
+  async logout(userId, _accessToken, context = {}) {
     const user = await this.userRepository.findById(userId);
     if (!user) throw new NotFoundError('User not found');
 
     await this.userRepository.updateById(userId, { refreshToken: null });
-
-    const redis = getRedisClient();
-    const ttl = 7 * 24 * 60 * 60; // 7 days in seconds
-    await redis.set(`blacklist:${accessToken}`, '1', 'EX', ttl);
 
     await this.auditService.log({
       action: AuditAction.LOGOUT,

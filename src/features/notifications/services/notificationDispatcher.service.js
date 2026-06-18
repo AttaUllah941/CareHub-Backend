@@ -1,5 +1,3 @@
-const logger = require('../../../core/utils/logger');
-const config = require('../../../config');
 const { getSocketIo } = require('../../../config/socketRegistry');
 const { NotificationChannel } = require('../../../shared/enums/notificationChannel.enum');
 const { NotificationDeliveryStatus } = require('../../../shared/enums/notificationDeliveryStatus.enum');
@@ -26,14 +24,6 @@ class NotificationDispatcherService {
       return { status: NotificationDeliveryStatus.FAILED, error: 'No email address' };
     }
 
-    const actionUrl = metadata.actionUrl ? `${config.frontend.url}${metadata.actionUrl}` : config.frontend.url;
-
-    if (config.isProduction) {
-      logger.info(`[EMAIL] Queued to ${email}: ${subject}`);
-    } else {
-      logger.info(`[DEV EMAIL] To: ${email} | Subject: ${subject} | Body: ${body} | Link: ${actionUrl}`);
-    }
-
     return { status: NotificationDeliveryStatus.SENT, sentAt: new Date() };
   }
 
@@ -41,12 +31,6 @@ class NotificationDispatcherService {
     const phone = user?.phone;
     if (!phone) {
       return { status: NotificationDeliveryStatus.FAILED, error: 'No phone number' };
-    }
-
-    if (config.isProduction) {
-      logger.info(`[SMS] Queued to ${phone}`);
-    } else {
-      logger.info(`[DEV SMS] To: ${phone} | Body: ${body}`);
     }
 
     return { status: NotificationDeliveryStatus.SENT, sentAt: new Date() };
@@ -71,10 +55,6 @@ class NotificationDispatcherService {
     };
 
     io.to(`user:${userId}`).emit('notification', payload);
-
-    if (!config.isProduction) {
-      logger.info(`[DEV PUSH] user:${userId} | ${title}`);
-    }
 
     return { status: NotificationDeliveryStatus.SENT, sentAt: new Date() };
   }
