@@ -60,6 +60,7 @@ const createApp = () => {
     });
   });
 
+  // swagger documentation
   app.use(`${config.apiPrefix}/docs`, swaggerUi.serve, swaggerUi.setup(swaggerSpec));
   app.use(`${config.apiPrefix}/auth`, authRoutes);
   app.use(`${config.apiPrefix}/users`, userRoutes);
