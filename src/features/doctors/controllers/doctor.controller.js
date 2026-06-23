@@ -17,6 +17,11 @@ class DoctorController {
     res.status(HttpStatus.OK).json({ success: true, data: result });
   });
 
+  searchPublicDoctors = asyncHandler(async (req, res) => {
+    const result = await this.doctorService.searchPublicDoctors(req.query);
+    res.status(HttpStatus.OK).json({ success: true, data: result });
+  });
+
   // Get the profile of the authenticated doctor
   getMyProfile = asyncHandler(async (req, res) => {
     const doctor = await this.doctorService.getMyProfile(req.user);

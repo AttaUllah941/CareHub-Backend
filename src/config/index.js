@@ -1,5 +1,38 @@
 require('dotenv').config();
 
+const isProduction = process.env.NODE_ENV === 'production';
+
+/** Comma-separated list, e.g. http://localhost:4200,http://localhost:54169 */
+const parseCorsOrigins = (value) => {
+  if (!value) return ['http://localhost:4200'];
+  return value.split(',').map((entry) => entry.trim()).filter(Boolean);
+};
+
+const isLocalhostOrigin = (origin) =>
+  /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+
+/**
+ * CORS origin callback — in development, any localhost port is allowed
+ * (Angular SSR/dev-server often uses ports other than 4200).
+ */
+const resolveCorsOrigin = (origin, callback) => {
+  if (!origin) {
+    return callback(null, true);
+  }
+
+  const allowedOrigins = parseCorsOrigins(process.env.CORS_ORIGIN);
+
+  if (allowedOrigins.includes(origin)) {
+    return callback(null, true);
+  }
+
+  if (!isProduction && isLocalhostOrigin(origin)) {
+    return callback(null, true);
+  }
+
+  return callback(new Error(`Origin ${origin} not allowed by CORS`));
+};
+
 /**
  * Centralized application configuration.
  * All env vars are validated at startup to fail fast in production.
@@ -8,7 +41,7 @@ const config = Object.freeze({
   env: process.env.NODE_ENV || 'development',
   port: parseInt(process.env.PORT, 10) || 5800,
   apiPrefix: process.env.API_PREFIX || '/api/v1',
-  isProduction: process.env.NODE_ENV === 'production',
+  isProduction,
 
   mongodb: {
     uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/carehub',
@@ -23,7 +56,8 @@ const config = Object.freeze({
   },
 
   cors: {
-    origin: process.env.CORS_ORIGIN || 'http://localhost:4200',
+    allowedOrigins: parseCorsOrigins(process.env.CORS_ORIGIN),
+    origin: resolveCorsOrigin,
   },
 
   rateLimit: {

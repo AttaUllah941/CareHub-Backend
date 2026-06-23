@@ -20,6 +20,7 @@ const searchDoctorsQueryDto = [
   query('limit').optional().isInt({ min: 1, max: MAX_LIMIT }),
   query('name').optional().trim().isLength({ max: 100 }),
   query('specialtyId').optional().isMongoId(),
+  query('specialtySlug').optional().trim().isLength({ max: 100 }),
   query('clinicId').optional().isMongoId(),
   query('city').optional().trim().isLength({ max: 100 }),
   query('minFee').optional().isFloat({ min: 0 }),
@@ -33,6 +34,8 @@ const searchDoctorsQueryDto = [
   query('sortBy').optional().isIn(['createdAt', 'consultationFee', 'yearsOfExperience']),
   query('sortOrder').optional().isIn(['asc', 'desc']),
 ];
+
+const publicSearchDoctorsQueryDto = [...searchDoctorsQueryDto];
 
 const qualificationDto = {
   degree: body('qualifications.*.degree').optional().trim().notEmpty().isLength({ max: 150 }),
@@ -111,6 +114,7 @@ module.exports = {
   doctorIdParam,
   listDoctorsQueryDto,
   searchDoctorsQueryDto,
+  publicSearchDoctorsQueryDto,
   createDoctorDto,
   updateDoctorDto,
   updateMyProfileDto,

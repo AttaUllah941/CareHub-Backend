@@ -48,6 +48,11 @@ class SpecialtyService {
     return specialties.map((s) => s.toJSON());
   }
 
+  async getPublicSpecialties() {
+    const specialties = await this.specialtyRepository.findAllActive();
+    return specialties.map((s) => s.toJSON());
+  }
+
   async getSpecialtyById(id, requestedBy) {
     this._assertCanRead(requestedBy);
     const specialty = await this.specialtyRepository.findById(id);

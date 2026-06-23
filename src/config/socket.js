@@ -1,4 +1,5 @@
 const { Server } = require('socket.io');
+const config = require('./index');
 const logger = require('../core/utils/logger');
 const { verifyAccessToken } = require('../core/utils/token.utils');
 const { setSocketIo } = require('./socketRegistry');
@@ -12,7 +13,7 @@ const { registerChatHandlers } = require('../features/chat/socket/chat.socket');
 const initializeSocket = (httpServer) => {
   const io = new Server(httpServer, {
     cors: {
-      origin: process.env.CORS_ORIGIN || 'http://localhost:4200',
+      origin: config.cors.origin,
       methods: ['GET', 'POST'],
       credentials: true,
     },

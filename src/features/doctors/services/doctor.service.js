@@ -72,6 +72,11 @@ class DoctorService {
       currency: profile.currency,
       profileImageUrl: profile.profileImageUrl,
       about: profile.about,
+      qualifications: (profile.qualifications || []).map((q) => ({
+        degree: q.degree,
+        institution: q.institution,
+        year: q.year,
+      })),
       specialties: (profile.specialtyIds || []).map((s) =>
         typeof s === 'object'
           ? { id: s._id?.toString() || s.id, name: s.name, slug: s.slug }
@@ -143,12 +148,54 @@ class DoctorService {
 
   async searchDoctors(query, requestedBy) {
     this._assertCanSearch(requestedBy);
+    return this._executeSearch(query);
+  }
+
+  async searchPublicDoctors(query) {
+    return this._executeSearch(query);
+  }
+
+  async _resolveSpecialtyId(query) {
+    if (query.specialtyId) return query.specialtyId;
+    if (!query.specialtySlug) return undefined;
+
+    const slug = query.specialtySlug.toLowerCase();
+    const specialty = await this.specialtyRepository.findBySlug(slug);
+    if (specialty) return specialty._id?.toString() || specialty.id;
+
+    // Common marketplace aliases (e.g. dermatologist → dermatology)
+    const aliasMap = {
+      dermatologist: 'dermatology',
+      gynecologist: 'gynecology',
+      urologist: 'urology',
+      gastroenterologist: 'gastroenterology',
+      'general-practitioner': 'general-medicine',
+      'general-physician': 'general-medicine',
+      psychiatrist: 'psychiatry',
+      psychologist: 'psychiatry',
+      pediatrician: 'pediatrics',
+      nutritionist: 'nutrition',
+      cardiologist: 'cardiology',
+      neurologist: 'neurology',
+      'orthopedic-surgeon': 'orthopedic',
+      pulmonologist: 'pulmonology',
+      ophthalmologist: 'ophthalmology',
+    };
+    const mapped = aliasMap[slug];
+    if (!mapped) return undefined;
+
+    const mappedSpecialty = await this.specialtyRepository.findBySlug(mapped);
+    return mappedSpecialty?._id?.toString() || mappedSpecialty?.id;
+  }
+
+  async _executeSearch(query) {
+    const specialtyId = await this._resolveSpecialtyId(query);
 
     const result = await this.doctorProfileRepository.searchPublic({
       page: parseInt(query.page, 10) || DEFAULT_PAGE,
       limit: parseInt(query.limit, 10) || DEFAULT_LIMIT,
       name: query.name,
-      specialtyId: query.specialtyId,
+      specialtyId,
       clinicId: query.clinicId,
       city: query.city,
       minFee: query.minFee !== undefined ? parseFloat(query.minFee) : undefined,

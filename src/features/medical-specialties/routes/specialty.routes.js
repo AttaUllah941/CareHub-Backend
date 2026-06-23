@@ -13,6 +13,8 @@ const {
 const router = Router();
 const specialtyController = container.resolve('specialtyController');
 
+router.get('/public', specialtyController.getPublicSpecialties);
+
 router.get(
   '/all',
   authenticate,

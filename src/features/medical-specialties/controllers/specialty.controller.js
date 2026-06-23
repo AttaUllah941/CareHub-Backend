@@ -16,6 +16,11 @@ class SpecialtyController {
     res.status(HttpStatus.OK).json({ success: true, data: { specialties } });
   });
 
+  getPublicSpecialties = asyncHandler(async (_req, res) => {
+    const specialties = await this.specialtyService.getPublicSpecialties();
+    res.status(HttpStatus.OK).json({ success: true, data: { specialties } });
+  });
+
   getSpecialtyById = asyncHandler(async (req, res) => {
     const specialty = await this.specialtyService.getSpecialtyById(req.params.id, req.user);
     res.status(HttpStatus.OK).json({ success: true, data: { specialty } });

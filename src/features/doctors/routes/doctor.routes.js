@@ -7,6 +7,7 @@ const {
   doctorIdParam,
   listDoctorsQueryDto,
   searchDoctorsQueryDto,
+  publicSearchDoctorsQueryDto,
   createDoctorDto,
   updateDoctorDto,
   updateMyProfileDto,
@@ -41,6 +42,13 @@ router.put(
   updateMyProfileDto,
   validate,
   doctorController.updateMyProfile,
+);
+
+router.get(
+  '/public/search',
+  publicSearchDoctorsQueryDto,
+  validate,
+  doctorController.searchPublicDoctors,
 );
 
 router.get(
