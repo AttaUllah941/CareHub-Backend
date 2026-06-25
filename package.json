@@ -1,7 +1,7 @@
 {
   "name": "carehub-backend",
-  "version": "1.0.0",
-  "description": "CareHub Healthcare Marketplace & Telemedicine Platform API",
+  "version": "2.0.0",
+  "description": "CareHub Healthcare Marketplace API — Node.js, Express, MongoDB",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
@@ -11,8 +11,8 @@
   },
   "keywords": [
     "healthcare",
-    "telemedicine",
-    "marketplace"
+    "marketplace",
+    "carehub"
   ],
   "author": "CareHub",
   "license": "ISC",
@@ -21,7 +21,6 @@
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
-    "exceljs": "^4.4.0",
     "express": "^5.1.0",
     "express-rate-limit": "^7.5.0",
     "express-validator": "^7.2.1",
@@ -30,8 +29,6 @@
     "mongoose": "^8.15.1",
     "morgan": "^1.10.0",
     "multer": "^2.1.1",
-    "pdfkit": "^0.19.1",
-    "socket.io": "^4.8.1",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "winston": "^3.17.0"

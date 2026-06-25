@@ -1,5 +1,5 @@
 const swaggerJsdoc = require('swagger-jsdoc');
-const config = require('../config');
+const config = require('./index');
 
 const swaggerOptions = {
   definition: {
@@ -8,7 +8,7 @@ const swaggerOptions = {
       title: 'CareHub API',
       version: '1.0.0',
       description:
-        'Healthcare Marketplace & Telemedicine Platform API — doctors, patients, clinics, appointments, and telemedicine.',
+        'CareHub healthcare marketplace API — aligned with the CareHub Angular frontend.',
       contact: { name: 'CareHub Team' },
     },
     servers: [
@@ -26,39 +26,15 @@ const swaggerOptions = {
         },
       },
       schemas: {
-        User: {
+        ApiSuccessResponse: {
           type: 'object',
           properties: {
-            id: { type: 'string' },
-            firstName: { type: 'string' },
-            lastName: { type: 'string' },
-            email: { type: 'string', format: 'email' },
-            phone: { type: 'string' },
-            role: {
-              type: 'string',
-              enum: ['SUPER_ADMIN', 'ADMIN', 'DOCTOR', 'PATIENT', 'CLINIC_MANAGER'],
-            },
-            isActive: { type: 'boolean' },
-            isEmailVerified: { type: 'boolean' },
-            createdAt: { type: 'string', format: 'date-time' },
-          },
-        },
-        AuthResponse: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean' },
+            success: { type: 'boolean', example: true },
             message: { type: 'string' },
-            data: {
-              type: 'object',
-              properties: {
-                user: { $ref: '#/components/schemas/User' },
-                accessToken: { type: 'string' },
-                refreshToken: { type: 'string' },
-              },
-            },
+            data: { type: 'object' },
           },
         },
-        ErrorResponse: {
+        ApiErrorResponse: {
           type: 'object',
           properties: {
             success: { type: 'boolean', example: false },
@@ -77,11 +53,8 @@ const swaggerOptions = {
         },
       },
     },
-    security: [{ bearerAuth: [] }],
   },
-  apis: ['./src/features/**/routes/*.js'],
+  apis: ['./src/modules/**/routes/*.js', './src/modules/**/*.routes.js'],
 };
 
-const swaggerSpec = swaggerJsdoc(swaggerOptions);
-
-module.exports = swaggerSpec;
+module.exports = swaggerJsdoc(swaggerOptions);

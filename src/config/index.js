@@ -2,7 +2,7 @@ require('dotenv').config();
 
 const isProduction = process.env.NODE_ENV === 'production';
 
-/** Comma-separated list, e.g. http://localhost:4200,http://localhost:54169 */
+/** Comma-separated list, e.g. http://localhost:4200 */
 const parseCorsOrigins = (value) => {
   if (!value) return ['http://localhost:4200'];
   return value.split(',').map((entry) => entry.trim()).filter(Boolean);
@@ -13,7 +13,7 @@ const isLocalhostOrigin = (origin) =>
 
 /**
  * CORS origin callback — in development, any localhost port is allowed
- * (Angular SSR/dev-server often uses ports other than 4200).
+ * (Angular dev-server / SSR may use ports other than 4200).
  */
 const resolveCorsOrigin = (origin, callback) => {
   if (!origin) {
@@ -35,7 +35,7 @@ const resolveCorsOrigin = (origin, callback) => {
 
 /**
  * Centralized application configuration.
- * All env vars are validated at startup to fail fast in production.
+ * Validate required secrets in production before scaling out.
  */
 const config = Object.freeze({
   env: process.env.NODE_ENV || 'development',
@@ -50,7 +50,7 @@ const config = Object.freeze({
 
   jwt: {
     secret: process.env.JWT_SECRET || 'dev-jwt-secret-change-me',
-    expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+    expiresIn: process.env.JWT_EXPIRES_IN || '15m',
     refreshSecret: process.env.JWT_REFRESH_SECRET || 'dev-refresh-secret-change-me',
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '30d',
   },
@@ -78,55 +78,19 @@ const config = Object.freeze({
   },
 
   storage: {
-    provider: process.env.STORAGE_PROVIDER || 'local',
-    uploadDir: process.env.UPLOAD_DIR || 'uploads/medical-records',
-    pharmacyUploadDir: process.env.PHARMACY_UPLOAD_DIR || 'uploads/pharmacy-prescriptions',
-    labReportUploadDir: process.env.LAB_REPORT_UPLOAD_DIR || 'uploads/lab-reports',
-    chatUploadDir: process.env.CHAT_UPLOAD_DIR || 'uploads/chat-attachments',
-    maxFileSizeMb: parseInt(process.env.MAX_UPLOAD_MB, 10) || 25,
-    allowedMimeTypes: [
-      'application/pdf',
-      'image/jpeg',
-      'image/png',
-      'image/webp',
-      'image/gif',
-      'application/dicom',
-      'application/octet-stream',
-    ],
-  },
-
-  payments: {
-    jazzcash: {
-      merchantId: process.env.JAZZCASH_MERCHANT_ID || '',
-      password: process.env.JAZZCASH_PASSWORD || '',
-      integritySalt: process.env.JAZZCASH_INTEGRITY_SALT || '',
-      returnUrl: process.env.JAZZCASH_RETURN_URL || '',
-      apiUrl: process.env.JAZZCASH_API_URL || 'https://sandbox.jazzcash.com.pk/ApplicationAPI/API/2.0/Purchase/DoMWalletTransaction',
-      sandbox: process.env.JAZZCASH_SANDBOX !== 'false',
-    },
-    easypaisa: {
-      storeId: process.env.EASYPAISA_STORE_ID || '',
-      hashKey: process.env.EASYPAISA_HASH_KEY || '',
-      returnUrl: process.env.EASYPAISA_RETURN_URL || '',
-      apiUrl: process.env.EASYPAISA_API_URL || 'https://easypay.easypaisa.com.pk/easypay-service/rest/v4/initiate-ma-transaction',
-      sandbox: process.env.EASYPAISA_SANDBOX !== 'false',
-    },
-  },
-
-  webrtc: {
-    iceServers: [
-      { urls: process.env.WEBRTC_STUN_URL || 'stun:stun.l.google.com:19302' },
-      ...(process.env.WEBRTC_TURN_URL
-        ? [
-            {
-              urls: process.env.WEBRTC_TURN_URL,
-              username: process.env.WEBRTC_TURN_USERNAME || '',
-              credential: process.env.WEBRTC_TURN_CREDENTIAL || '',
-            },
-          ]
-        : []),
-    ],
+    uploadDir: process.env.UPLOAD_DIR || 'uploads',
+    maxFileSizeMb: parseInt(process.env.MAX_UPLOAD_MB, 10) || 5,
   },
 });
+
+if (isProduction) {
+  const missing = [];
+  if (!process.env.JWT_SECRET) missing.push('JWT_SECRET');
+  if (!process.env.JWT_REFRESH_SECRET) missing.push('JWT_REFRESH_SECRET');
+  if (!process.env.MONGODB_URI) missing.push('MONGODB_URI');
+  if (missing.length) {
+    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+  }
+}
 
 module.exports = config;
