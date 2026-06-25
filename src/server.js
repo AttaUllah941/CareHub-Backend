@@ -2,34 +2,24 @@ const http = require('http');
 const createApp = require('./app');
 const config = require('./config');
 const { connectDatabase } = require('./config/database');
-const { initializeSocket } = require('./config/socket');
-const { seedRolesAndPermissions } = require('./features/roles/seeds');
-const { seedMedicalSpecialties } = require('./features/medical-specialties/seeds');
-const { seedLanguages } = require('./features/languages/seeds');
-const { seedClinics } = require('./features/clinics/seeds');
-const container = require('./core/container');
 const logger = require('./core/utils/logger');
 
 /**
  * Application entry point.
- * Bootstraps database, HTTP server, and WebSocket layer.
+ * Connects to MongoDB and starts the HTTP server.
  */
 const startServer = async () => {
   await connectDatabase();
-  await seedRolesAndPermissions();
-  await seedMedicalSpecialties();
-  await seedLanguages();
-  await seedClinics();
 
   const app = createApp();
   const httpServer = http.createServer(app);
 
-  initializeSocket(httpServer);
-
-  const notificationReminderService = container.resolve('notificationReminderService');
-  notificationReminderService.start();
-
-  httpServer.listen(config.port);
+  httpServer.listen(config.port, () => {
+    logger.info(`CareHub API listening on port ${config.port}`);
+    logger.info(`Health check: http://localhost:${config.port}/health`);
+    logger.info(`API base URL: http://localhost:${config.port}${config.apiPrefix}`);
+    logger.info(`Swagger docs: http://localhost:${config.port}${config.apiPrefix}/docs`);
+  });
 
   const gracefulShutdown = () => {
     httpServer.close(() => {

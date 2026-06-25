@@ -1,6 +1,5 @@
 /**
- * Application role definitions for RBAC.
- * Each role maps to a specific set of permissions across the platform.
+ * User roles — aligned with CareHub frontend (auth.model.ts).
  */
 const UserRole = Object.freeze({
   SUPER_ADMIN: 'SUPER_ADMIN',
@@ -12,17 +11,12 @@ const UserRole = Object.freeze({
   LAB: 'LAB',
 });
 
-/** Roles allowed during public self-registration */
-const SELF_REGISTER_ROLES = Object.freeze([
-  UserRole.DOCTOR,
+const USER_ROLES = Object.freeze(Object.values(UserRole));
+
+const PUBLIC_REGISTRATION_ROLES = Object.freeze([
   UserRole.PATIENT,
+  UserRole.DOCTOR,
   UserRole.CLINIC_MANAGER,
 ]);
 
-/** Roles that can only be created by privileged admins */
-const ADMIN_ONLY_ROLES = Object.freeze([
-  UserRole.SUPER_ADMIN,
-  UserRole.ADMIN,
-]);
-
-module.exports = { UserRole, SELF_REGISTER_ROLES, ADMIN_ONLY_ROLES };
+module.exports = { UserRole, USER_ROLES, PUBLIC_REGISTRATION_ROLES };
