@@ -2,49 +2,54 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-const swaggerUi = require('swagger-ui-express');
 const config = require('./config');
-const swaggerSpec = require('./config/swagger');
-const apiRoutes = require('./routes');
-const { errorHandler, notFoundHandler } = require('./core/errors/errorHandler');
-const { globalRateLimiter } = require('./core/middleware/rateLimiter.middleware');
+const errorMiddleware = require('./shared/middleware/error.middleware');
+const AppError = require('./shared/errors/AppError');
+const authRoutes = require('./modules/auth/auth.routes');
+const specialtiesRoutes = require('./modules/specialties/specialties.routes');
+const languagesRoutes = require('./modules/languages/languages.routes');
+const doctorsRoutes = require('./modules/doctors/doctors.routes');
+const doctorsAdminRoutes = require('./modules/doctors/doctors.admin.routes');
+const clinicsRoutes = require('./modules/clinics/clinics.routes');
+const schedulesRoutes = require('./modules/schedules/schedules.routes');
+const appointmentsRoutes = require('./modules/appointments/appointments.routes');
+const appointmentsDoctorRoutes = require('./modules/appointments/appointments.doctor.routes');
 
-/**
- * Creates and configures the Express application.
- * Feature modules are mounted via src/routes/index.js.
- */
-const createApp = () => {
-  const app = express();
+const app = express();
 
-  app.use(helmet());
-  app.use(cors({ origin: config.cors.origin, credentials: true, optionsSuccessStatus: 204 }));
-  app.use(globalRateLimiter);
-  app.use(express.json({ limit: '10mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(helmet());
+app.use(cors({ origin: config.cors.origin, credentials: true }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-  if (!config.isProduction) {
-    app.use(morgan('dev'));
-  }
+if (!config.isProduction) {
+  app.use(morgan('dev'));
+} else {
+  app.use(morgan('combined'));
+}
 
-  app.get('/health', (_req, res) => {
-    res.status(200).json({
-      success: true,
-      message: 'CareHub API is running',
-      data: {
-        environment: config.env,
-        apiPrefix: config.apiPrefix,
-        timestamp: new Date().toISOString(),
-      },
-    });
-  });
+const v1Router = express.Router();
 
-  app.use(`${config.apiPrefix}/docs`, swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-  app.use(config.apiPrefix, apiRoutes);
+v1Router.get('/health', (_req, res) => {
+  res.status(200).json({ success: true, message: 'ok' });
+});
 
-  app.use(notFoundHandler);
-  app.use(errorHandler);
+v1Router.use('/auth', authRoutes);
+v1Router.use('/medical-specialties', specialtiesRoutes);
+v1Router.use('/languages', languagesRoutes);
+v1Router.use('/doctors', doctorsRoutes);
+v1Router.use('/admin/doctors', doctorsAdminRoutes);
+v1Router.use('/clinics', clinicsRoutes);
+v1Router.use('/schedules', schedulesRoutes);
+v1Router.use('/appointments', appointmentsRoutes);
+v1Router.use('/doctor/appointments', appointmentsDoctorRoutes);
 
-  return app;
-};
+app.use(config.apiPrefix, v1Router);
 
-module.exports = createApp;
+app.use((_req, _res, next) => {
+  next(new AppError('Route not found', 404));
+});
+
+app.use(errorMiddleware);
+
+module.exports = app;
