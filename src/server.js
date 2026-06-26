@@ -1,37 +1,30 @@
 const http = require('http');
-const createApp = require('./app');
+const app = require('./app');
 const config = require('./config');
 const { connectDatabase } = require('./config/database');
-const logger = require('./core/utils/logger');
 
-/**
- * Application entry point.
- * Connects to MongoDB and starts the HTTP server.
- */
 const startServer = async () => {
   await connectDatabase();
 
-  const app = createApp();
-  const httpServer = http.createServer(app);
+  const server = http.createServer(app);
 
-  httpServer.listen(config.port, () => {
-    logger.info(`CareHub API listening on port ${config.port}`);
-    logger.info(`Health check: http://localhost:${config.port}/health`);
-    logger.info(`API base URL: http://localhost:${config.port}${config.apiPrefix}`);
-    logger.info(`Swagger docs: http://localhost:${config.port}${config.apiPrefix}/docs`);
+  server.listen(config.PORT, () => {
+    // eslint-disable-next-line no-console
+    console.log(`CareHub API listening on port ${config.PORT}`);
+    // eslint-disable-next-line no-console
+    console.log(`Health: http://localhost:${config.PORT}${config.apiPrefix}/health`);
   });
 
-  const gracefulShutdown = () => {
-    httpServer.close(() => {
-      process.exit(0);
-    });
+  const shutdown = () => {
+    server.close(() => process.exit(0));
   };
 
-  process.on('SIGTERM', gracefulShutdown);
-  process.on('SIGINT', gracefulShutdown);
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
 };
 
 startServer().catch((err) => {
-  logger.error('Failed to start server:', err);
+  // eslint-disable-next-line no-console
+  console.error('Failed to start server:', err);
   process.exit(1);
 });
