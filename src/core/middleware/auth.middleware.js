@@ -24,6 +24,27 @@ const authenticate = async (req, _res, next) => {
 };
 
 /**
+ * Optional JWT authentication — attaches req.user when a valid Bearer token is present.
+ */
+const optionalAuthenticate = async (req, _res, next) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader?.startsWith('Bearer ')) {
+    return next();
+  }
+
+  try {
+    const token = authHeader.split(' ')[1];
+    const decoded = verifyAccessToken(token);
+    req.user = { id: decoded.sub, role: decoded.role };
+  } catch {
+    // Ignore invalid tokens for optional auth routes
+  }
+
+  next();
+};
+
+/**
  * Role-based access control middleware factory.
  * @param {...string} allowedRoles - Roles permitted to access the route
  */
@@ -39,4 +60,4 @@ const authorize = (...allowedRoles) => (req, _res, next) => {
   next();
 };
 
-module.exports = { authenticate, authorize };
+module.exports = { authenticate, optionalAuthenticate, authorize };

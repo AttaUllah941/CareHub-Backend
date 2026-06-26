@@ -81,6 +81,20 @@ const config = Object.freeze({
     uploadDir: process.env.UPLOAD_DIR || 'uploads',
     maxFileSizeMb: parseInt(process.env.MAX_UPLOAD_MB, 10) || 5,
   },
+
+  redis: {
+    url: process.env.REDIS_URL || 'redis://127.0.0.1:6379',
+    enabled: process.env.REDIS_ENABLED !== 'false',
+  },
+
+  smtp: {
+    host: process.env.SMTP_HOST || '',
+    port: parseInt(process.env.SMTP_PORT, 10) || 587,
+    secure: process.env.SMTP_SECURE === 'true',
+    user: process.env.SMTP_USER || '',
+    pass: process.env.SMTP_PASS || '',
+    from: process.env.SMTP_FROM || 'CareHub <noreply@carehub.local>',
+  },
 });
 
 if (isProduction) {

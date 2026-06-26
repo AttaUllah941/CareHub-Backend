@@ -6,8 +6,19 @@ const swaggerUi = require('swagger-ui-express');
 const config = require('./config');
 const swaggerSpec = require('./config/swagger');
 const apiRoutes = require('./routes');
+const { ensureUploadDir, resolveUploadDir } = require('./shared/utils/storage');
 const { errorHandler, notFoundHandler } = require('./core/errors/errorHandler');
-const { globalRateLimiter } = require('./core/middleware/rateLimiter.middleware');
+const {
+  globalRateLimiter,
+  writeLimiter,
+} = require('./shared/middleware/rateLimit.middleware');
+
+const applyWriteRateLimiter = (req, res, next) => {
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
+    return writeLimiter(req, res, next);
+  }
+  return next();
+};
 
 /**
  * Creates and configures the Express application.
@@ -16,11 +27,15 @@ const { globalRateLimiter } = require('./core/middleware/rateLimiter.middleware'
 const createApp = () => {
   const app = express();
 
+  ensureUploadDir().catch(() => {});
+
   app.use(helmet());
   app.use(cors({ origin: config.cors.origin, credentials: true, optionsSuccessStatus: 204 }));
   app.use(globalRateLimiter);
+  app.use(applyWriteRateLimiter);
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+  app.use('/uploads', express.static(resolveUploadDir()));
 
   if (!config.isProduction) {
     app.use(morgan('dev'));

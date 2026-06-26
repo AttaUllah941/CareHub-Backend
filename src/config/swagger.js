@@ -54,7 +54,11 @@ const swaggerOptions = {
       },
     },
   },
-  apis: ['./src/modules/**/routes/*.js', './src/modules/**/*.routes.js'],
+  apis: [
+    './src/modules/**/*.routes.js',
+    './src/modules/auth/auth.routes.js',
+    './src/modules/doctors/doctors.routes.js',
+  ],
 };
 
 module.exports = swaggerJsdoc(swaggerOptions);
