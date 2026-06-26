@@ -2,16 +2,16 @@
  * Converts a string into a URL-friendly slug.
  */
 const slugify = (value) => {
-  if (!value) return '';
+  if (!value || typeof value !== 'string') {
+    return '';
+  }
 
   return value
-    .toString()
-    .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_-]+/g, '-')
     .replace(/^-+|-+$/g, '');
 };
 
-module.exports = slugify;
+module.exports = { slugify };

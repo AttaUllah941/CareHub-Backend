@@ -1,213 +1,149 @@
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+const {
+  BadRequestError,
+  ConflictError,
+  NotFoundError,
+  UnauthorizedError,
+} = require('../../core/errors/AppError');
 const config = require('../../config');
-const AppError = require('../../shared/errors/AppError');
-const { hashToken, generateSecureToken } = require('../../shared/utils/crypto.util');
-const { toUserResponse } = require('../../shared/utils/user.mapper');
+const { generateTokens } = require('../../core/utils/token.utils');
+const { PUBLIC_REGISTRATION_ROLES } = require('../../shared/enums/userRole.enum');
+const usersRepository = require('../users/users.repository');
 const authRepository = require('./auth.repository');
+const { hashToken } = require('./auth.model');
+const {
+  sendRegistrationEmail,
+  sendPasswordResetEmail,
+} = require('../../shared/services/eventNotifications.service');
 
-const parseDurationToMs = (value) => {
-  const match = /^(\d+)([smhd])$/.exec(value);
-  if (!match) {
-    return 7 * 24 * 60 * 60 * 1000;
+const toUserResponse = (user) => ({
+  id: user._id.toString(),
+  firstName: user.firstName,
+  lastName: user.lastName,
+  email: user.email,
+  phone: user.phone || null,
+  role: user.role,
+  isActive: user.isActive,
+  isEmailVerified: user.isEmailVerified,
+  createdAt: user.createdAt?.toISOString(),
+});
+
+const register = async (payload) => {
+  const email = payload.email.toLowerCase();
+
+  if (!PUBLIC_REGISTRATION_ROLES.includes(payload.role)) {
+    throw new BadRequestError('Invalid registration role');
   }
 
-  const amount = Number(match[1]);
-  const unit = match[2];
+  const existingUser = await usersRepository.findByEmail(email);
+  if (existingUser) {
+    throw new ConflictError('An account with this email already exists');
+  }
 
-  const multipliers = {
-    s: 1000,
-    m: 60 * 1000,
-    h: 60 * 60 * 1000,
-    d: 24 * 60 * 60 * 1000,
-  };
+  const passwordHash = await bcrypt.hash(payload.password, config.bcrypt.saltRounds);
 
-  return amount * multipliers[unit];
-};
-
-const hashPassword = async (password) => bcrypt.hash(password, config.BCRYPT_SALT_ROUNDS);
-
-const comparePassword = async (password, passwordHash) => bcrypt.compare(password, passwordHash);
-
-const signAccessToken = (user) =>
-  jwt.sign({ sub: user._id.toString(), role: user.role }, config.JWT_ACCESS_SECRET, {
-    expiresIn: config.JWT_ACCESS_EXPIRES_IN,
+  const user = await usersRepository.create({
+    firstName: payload.firstName,
+    lastName: payload.lastName,
+    email,
+    phone: payload.phone,
+    passwordHash,
+    role: payload.role,
+    isActive: true,
+    isEmailVerified: false,
   });
 
-const createRefreshTokenValue = () => generateSecureToken(48);
-
-const storeRefreshToken = async (userId, refreshToken) => {
-  const expiresAt = new Date(Date.now() + parseDurationToMs(config.JWT_REFRESH_EXPIRES_IN));
-
-  await authRepository.createRefreshToken({
-    userId,
-    tokenHash: hashToken(refreshToken),
-    expiresAt,
-    revoked: false,
+  await sendRegistrationEmail({
+    email: user.email,
+    firstName: user.firstName,
   });
-};
 
-const buildAuthResponse = async (user) => {
-  await authRepository.revokeAllRefreshTokensForUser(user._id);
-
-  const accessToken = signAccessToken(user);
-  const refreshToken = createRefreshTokenValue();
-
-  await storeRefreshToken(user._id, refreshToken);
+  const tokens = generateTokens(user._id.toString(), user.role);
 
   return {
     user: toUserResponse(user),
-    accessToken,
-    refreshToken,
+    tokens,
   };
 };
 
-const register = async (payload) => {
-  const existingEmail = await authRepository.findUserByEmail(payload.email);
-  if (existingEmail) {
-    throw new AppError('Email already exists', 409);
-  }
-
-  const passwordHash = await hashPassword(payload.password);
-
-  const user = await authRepository.createUser({
-    firstName: payload.firstName,
-    lastName: payload.lastName,
-    email: payload.email.toLowerCase(),
-    phone: payload.phone,
-    passwordHash,
-    role: payload.role || 'PATIENT',
-  });
-
-  return buildAuthResponse(user);
-};
-
 const login = async ({ email, password }) => {
-  const user = await authRepository.findUserByEmail(email, { includePassword: true });
-
-  if (!user || !user.isActive) {
-    throw new AppError('Invalid email or password', 401);
+  const user = await usersRepository.findByEmail(email.toLowerCase());
+  if (!user) {
+    throw new UnauthorizedError('Invalid email or password');
   }
 
-  const isValid = await comparePassword(password, user.passwordHash);
-  if (!isValid) {
-    throw new AppError('Invalid email or password', 401);
+  if (!user.isActive) {
+    throw new UnauthorizedError('Account is inactive');
   }
 
-  user.passwordHash = undefined;
-  return buildAuthResponse(user);
+  const passwordMatches = await bcrypt.compare(password, user.passwordHash);
+  if (!passwordMatches) {
+    throw new UnauthorizedError('Invalid email or password');
+  }
+
+  const tokens = generateTokens(user._id.toString(), user.role);
+
+  return {
+    user: toUserResponse(user),
+    tokens,
+  };
 };
 
-const refresh = async ({ refreshToken }) => {
-  const storedToken = await authRepository.findRefreshTokenByHash(hashToken(refreshToken));
-
-  if (!storedToken || storedToken.expiresAt <= new Date()) {
-    throw new AppError('Invalid or expired refresh token', 401);
-  }
-
-  const user = await authRepository.findUserById(storedToken.userId);
-  if (!user || !user.isActive) {
-    throw new AppError('User account is inactive', 401);
-  }
-
-  await authRepository.revokeRefreshTokenById(storedToken._id);
-
-  return buildAuthResponse(user);
-};
-
-const logout = async (userId) => {
-  await authRepository.revokeAllRefreshTokensForUser(userId);
-};
-
-const getProfile = async (userId) => {
-  const user = await authRepository.findUserById(userId);
-
-  if (!user || !user.isActive) {
-    throw new AppError('User not found', 404);
+const getMe = async (userId) => {
+  const user = await usersRepository.findById(userId);
+  if (!user) {
+    throw new NotFoundError('User not found');
   }
 
   return { user: toUserResponse(user) };
 };
 
-const forgotPassword = async ({ email }) => {
-  const genericMessage =
-    'If an account exists for that email, a password reset link has been sent.';
-
-  const user = await authRepository.findUserByEmail(email);
+const requestPasswordReset = async (email) => {
+  const user = await usersRepository.findByEmail(email.toLowerCase());
 
   if (!user) {
-    return { message: genericMessage };
+    return { message: 'If an account exists for that email, a reset link has been sent' };
   }
 
-  const resetToken = generateSecureToken(32);
-  const expiresAt = new Date(Date.now() + config.PASSWORD_RESET_EXPIRES_MS);
+  const resetToken = crypto.randomBytes(32).toString('hex');
+  const expiresAt = new Date(Date.now() + config.passwordReset.expiresInMs);
 
+  await authRepository.invalidateUserPasswordResetTokens(user._id);
   await authRepository.createPasswordResetToken({
     userId: user._id,
     tokenHash: hashToken(resetToken),
     expiresAt,
-    used: false,
   });
 
-  const resetUrl = `${config.FRONTEND_URL || 'http://localhost:4200'}/auth/reset-password?token=${resetToken}`;
-
-  // eslint-disable-next-line no-console
-  console.log('[auth] Password reset email stub:', {
-    to: user.email,
-    resetUrl,
-    expiresAt: expiresAt.toISOString(),
+  await sendPasswordResetEmail({
+    email: user.email,
+    firstName: user.firstName,
+    resetToken,
   });
 
-  const response = { message: genericMessage };
-
-  if (!config.isProduction) {
-    response.devResetToken = resetToken;
-  }
-
-  return response;
+  return { message: 'If an account exists for that email, a reset link has been sent' };
 };
 
 const resetPassword = async ({ token, password }) => {
-  const storedToken = await authRepository.findValidPasswordResetToken(hashToken(token));
-
-  if (!storedToken) {
-    throw new AppError('Invalid or expired reset token', 400);
+  const resetRecord = await authRepository.findValidPasswordResetToken(token);
+  if (!resetRecord) {
+    throw new BadRequestError('Invalid or expired password reset token');
   }
 
-  const passwordHash = await hashPassword(password);
-  await authRepository.updateUserPassword(storedToken.userId, passwordHash);
-  await authRepository.markPasswordResetTokenUsed(storedToken._id);
-  await authRepository.revokeAllRefreshTokensForUser(storedToken.userId);
+  const passwordHash = await bcrypt.hash(password, config.bcrypt.saltRounds);
 
-  return { message: 'Password reset successful' };
-};
+  await usersRepository.updateById(resetRecord.userId, { passwordHash });
+  await authRepository.markPasswordResetTokenUsed(resetRecord._id);
 
-const changePassword = async (userId, { currentPassword, newPassword }) => {
-  const user = await authRepository.findUserById(userId, { includePassword: true });
-
-  if (!user) {
-    throw new AppError('User not found', 404);
-  }
-
-  const isValid = await comparePassword(currentPassword, user.passwordHash);
-  if (!isValid) {
-    throw new AppError('Current password is incorrect', 400);
-  }
-
-  const passwordHash = await hashPassword(newPassword);
-  await authRepository.updateUserPassword(userId, passwordHash);
-  await authRepository.revokeAllRefreshTokensForUser(userId);
-
-  return { message: 'Password changed successfully' };
+  return { message: 'Password has been reset successfully' };
 };
 
 module.exports = {
   register,
   login,
-  refresh,
-  logout,
-  getProfile,
-  forgotPassword,
+  getMe,
+  requestPasswordReset,
   resetPassword,
-  changePassword,
+  toUserResponse,
 };

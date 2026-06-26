@@ -1,30 +1,53 @@
 const http = require('http');
-const app = require('./app');
+const createApp = require('./app');
 const config = require('./config');
 const { connectDatabase } = require('./config/database');
+const { connectRedis, disconnectRedis } = require('./config/redis');
+const { initEmailQueue, closeEmailQueue } = require('./jobs/queues/email.queue');
+const { startEmailProcessor } = require('./jobs/processors/email.processor');
+const { initSockets, closeSockets } = require('./sockets');
+const logger = require('./core/utils/logger');
 
+/**
+ * Application entry point.
+ * Connects to MongoDB, Redis, and starts the HTTP server with Bull email workers.
+ */
 const startServer = async () => {
   await connectDatabase();
+  await connectRedis();
 
-  const server = http.createServer(app);
+  const emailQueue = await initEmailQueue();
+  if (emailQueue) {
+    startEmailProcessor(emailQueue);
+  }
 
-  server.listen(config.PORT, () => {
-    // eslint-disable-next-line no-console
-    console.log(`CareHub API listening on port ${config.PORT}`);
-    // eslint-disable-next-line no-console
-    console.log(`Health: http://localhost:${config.PORT}${config.apiPrefix}/health`);
+  const app = createApp();
+  const httpServer = http.createServer(app);
+
+  initSockets(httpServer);
+
+  httpServer.listen(config.port, () => {
+    logger.info(`CareHub API listening on port ${config.port}`);
+    logger.info(`Health check: http://localhost:${config.port}/health`);
+    logger.info(`API base URL: http://localhost:${config.port}${config.apiPrefix}`);
+    logger.info(`Swagger docs: http://localhost:${config.port}${config.apiPrefix}/docs`);
+    logger.info(`Video consult signaling: ws://localhost:${config.port}/video-consult`);
   });
 
-  const shutdown = () => {
-    server.close(() => process.exit(0));
+  const gracefulShutdown = async () => {
+    httpServer.close(async () => {
+      await closeSockets();
+      await closeEmailQueue();
+      await disconnectRedis();
+      process.exit(0);
+    });
   };
 
-  process.on('SIGTERM', shutdown);
-  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', gracefulShutdown);
+  process.on('SIGINT', gracefulShutdown);
 };
 
 startServer().catch((err) => {
-  // eslint-disable-next-line no-console
-  console.error('Failed to start server:', err);
+  logger.error('Failed to start server:', err);
   process.exit(1);
 });

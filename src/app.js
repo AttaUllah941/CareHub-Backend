@@ -2,54 +2,64 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const swaggerUi = require('swagger-ui-express');
 const config = require('./config');
-const errorMiddleware = require('./shared/middleware/error.middleware');
-const AppError = require('./shared/errors/AppError');
-const authRoutes = require('./modules/auth/auth.routes');
-const specialtiesRoutes = require('./modules/specialties/specialties.routes');
-const languagesRoutes = require('./modules/languages/languages.routes');
-const doctorsRoutes = require('./modules/doctors/doctors.routes');
-const doctorsAdminRoutes = require('./modules/doctors/doctors.admin.routes');
-const clinicsRoutes = require('./modules/clinics/clinics.routes');
-const schedulesRoutes = require('./modules/schedules/schedules.routes');
-const appointmentsRoutes = require('./modules/appointments/appointments.routes');
-const appointmentsDoctorRoutes = require('./modules/appointments/appointments.doctor.routes');
+const swaggerSpec = require('./config/swagger');
+const apiRoutes = require('./routes');
+const { ensureUploadDir, resolveUploadDir } = require('./shared/utils/storage');
+const { errorHandler, notFoundHandler } = require('./core/errors/errorHandler');
+const {
+  globalRateLimiter,
+  writeLimiter,
+} = require('./shared/middleware/rateLimit.middleware');
 
-const app = express();
+const applyWriteRateLimiter = (req, res, next) => {
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
+    return writeLimiter(req, res, next);
+  }
+  return next();
+};
 
-app.use(helmet());
-app.use(cors({ origin: config.cors.origin, credentials: true }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+/**
+ * Creates and configures the Express application.
+ * Feature modules are mounted via src/routes/index.js.
+ */
+const createApp = () => {
+  const app = express();
 
-if (!config.isProduction) {
-  app.use(morgan('dev'));
-} else {
-  app.use(morgan('combined'));
-}
+  ensureUploadDir().catch(() => {});
 
-const v1Router = express.Router();
+  app.use(helmet());
+  app.use(cors({ origin: config.cors.origin, credentials: true, optionsSuccessStatus: 204 }));
+  app.use(globalRateLimiter);
+  app.use(applyWriteRateLimiter);
+  app.use(express.json({ limit: '10mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+  app.use('/uploads', express.static(resolveUploadDir()));
 
-v1Router.get('/health', (_req, res) => {
-  res.status(200).json({ success: true, message: 'ok' });
-});
+  if (!config.isProduction) {
+    app.use(morgan('dev'));
+  }
 
-v1Router.use('/auth', authRoutes);
-v1Router.use('/medical-specialties', specialtiesRoutes);
-v1Router.use('/languages', languagesRoutes);
-v1Router.use('/doctors', doctorsRoutes);
-v1Router.use('/admin/doctors', doctorsAdminRoutes);
-v1Router.use('/clinics', clinicsRoutes);
-v1Router.use('/schedules', schedulesRoutes);
-v1Router.use('/appointments', appointmentsRoutes);
-v1Router.use('/doctor/appointments', appointmentsDoctorRoutes);
+  app.get('/health', (_req, res) => {
+    res.status(200).json({
+      success: true,
+      message: 'CareHub API is running',
+      data: {
+        environment: config.env,
+        apiPrefix: config.apiPrefix,
+        timestamp: new Date().toISOString(),
+      },
+    });
+  });
 
-app.use(config.apiPrefix, v1Router);
+  app.use(`${config.apiPrefix}/docs`, swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+  app.use(config.apiPrefix, apiRoutes);
 
-app.use((_req, _res, next) => {
-  next(new AppError('Route not found', 404));
-});
+  app.use(notFoundHandler);
+  app.use(errorHandler);
 
-app.use(errorMiddleware);
+  return app;
+};
 
-module.exports = app;
+module.exports = createApp;

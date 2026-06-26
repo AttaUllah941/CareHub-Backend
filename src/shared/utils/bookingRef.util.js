@@ -1,12 +1,11 @@
 const crypto = require('crypto');
 
 /**
- * Generates a unique booking reference (e.g. VC-XXXXXX, IC-XXXXXX).
+ * Generates a unique video-consultation room reference (e.g. VC-XXXXXXXX).
  */
-const generateBookingRef = (consultationType) => {
-  const prefix = consultationType === 'video' ? 'VC' : 'IC';
+const generateBookingRef = () => {
   const suffix = crypto.randomBytes(4).toString('hex').toUpperCase();
-  return `${prefix}-${suffix}`;
+  return `VC-${suffix}`;
 };
 
 module.exports = { generateBookingRef };

@@ -1,70 +1,34 @@
 const mongoose = require('mongoose');
-const { Appointment, BLOCKING_APPOINTMENT_STATUSES } = require('./appointments.model');
+const { Appointment } = require('./appointments.model');
 
-const POPULATE_DEFAULT = [
-  { path: 'doctorId', select: 'fullName title city consultationFee currency userId' },
-  { path: 'clinicId', select: 'name address city citySlug consultationFee' },
-  { path: 'patientId', select: 'firstName lastName email phone' },
-];
+const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 
-const findById = (id) => Appointment.findById(id).populate(POPULATE_DEFAULT);
-
-const findBookedSlotsByDoctorAndDate = (doctorId, date) =>
-  Appointment.find({
-    doctorId,
-    date,
-    status: { $in: BLOCKING_APPOINTMENT_STATUSES },
-  }).select('timeSlot consultationType clinicId status');
-
-const existsBlockingSlot = (doctorId, date, timeSlot) =>
+const hasCompletedAppointment = (patientId, doctorId) =>
   Appointment.exists({
+    patientId,
     doctorId,
-    date,
-    timeSlot,
-    status: { $in: BLOCKING_APPOINTMENT_STATUSES },
+    status: 'completed',
   });
 
-const create = (data, options = {}) => {
-  const appointment = new Appointment(data);
-  return appointment.save(options);
-};
+const findById = (id) =>
+  Appointment.findById(id)
+    .populate('doctorId', 'fullName userId')
+    .populate('patientId', 'firstName lastName email');
 
-const findByPatient = (patientId, filter, { skip, limit, sort }) =>
-  Appointment.find({ patientId, ...filter })
-    .sort(sort)
-    .skip(skip)
-    .limit(limit)
-    .populate(POPULATE_DEFAULT);
+const findByBookingRef = (bookingRef) =>
+  Appointment.findOne({ bookingRef })
+    .populate('doctorId', 'fullName userId')
+    .populate('patientId', 'firstName lastName email');
 
-const countByPatient = (patientId, filter) =>
-  Appointment.countDocuments({ patientId, ...filter });
-
-const findByDoctor = (doctorId, filter, { skip, limit, sort }) =>
-  Appointment.find({ doctorId, ...filter })
-    .sort(sort)
-    .skip(skip)
-    .limit(limit)
-    .populate(POPULATE_DEFAULT);
-
-const countByDoctor = (doctorId, filter) =>
-  Appointment.countDocuments({ doctorId, ...filter });
-
-const updateById = (id, data, options = {}) =>
-  Appointment.findByIdAndUpdate(id, data, { new: true, runValidators: true, ...options }).populate(
-    POPULATE_DEFAULT,
-  );
-
-const isValidObjectId = (value) => mongoose.Types.ObjectId.isValid(value);
+const updateById = (id, data) =>
+  Appointment.findByIdAndUpdate(id, data, { new: true, runValidators: true })
+    .populate('doctorId', 'fullName userId')
+    .populate('patientId', 'firstName lastName email');
 
 module.exports = {
-  findById,
-  findBookedSlotsByDoctorAndDate,
-  existsBlockingSlot,
-  create,
-  findByPatient,
-  countByPatient,
-  findByDoctor,
-  countByDoctor,
-  updateById,
   isValidObjectId,
+  hasCompletedAppointment,
+  findById,
+  findByBookingRef,
+  updateById,
 };

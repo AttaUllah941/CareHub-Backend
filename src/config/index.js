@@ -1,53 +1,26 @@
 require('dotenv').config();
 
-const { cleanEnv, str, port, num } = require('envalid');
+const isProduction = process.env.NODE_ENV === 'production';
 
-const env = cleanEnv(process.env, {
-  NODE_ENV: str({
-    choices: ['development', 'production', 'test'],
-    default: 'development',
-  }),
-  PORT: port({ default: 5800 }),
-  MONGODB_URI: str({ devDefault: 'mongodb://localhost:27017/carehub' }),
-  JWT_ACCESS_SECRET: str({ devDefault: 'dev-access-secret-change-me' }),
-  JWT_REFRESH_SECRET: str({ devDefault: 'dev-refresh-secret-change-me' }),
-  JWT_ACCESS_EXPIRES_IN: str({ default: '15m' }),
-  JWT_REFRESH_EXPIRES_IN: str({ default: '7d' }),
-  BCRYPT_SALT_ROUNDS: num({ default: 12 }),
-  PASSWORD_RESET_EXPIRES_MS: num({ default: 60 * 60 * 1000 }),
-  CORS_ORIGIN: str({ default: 'http://localhost:4200' }),
-  FRONTEND_URL: str({ default: 'http://localhost:4200' }),
-  REDIS_URL: str({ default: '' }),
-  SMTP_HOST: str({ default: '' }),
-  SMTP_PORT: num({ default: 587 }),
-  SMTP_USER: str({ default: '' }),
-  SMTP_PASS: str({ default: '' }),
-  AWS_ACCESS_KEY_ID: str({ default: '' }),
-  AWS_SECRET_ACCESS_KEY: str({ default: '' }),
-  AWS_S3_BUCKET: str({ default: '' }),
-  AWS_REGION: str({ default: '' }),
-});
-
-const parseCorsOrigins = (value) =>
-  value
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-
-const isProduction = env.NODE_ENV === 'production';
+/** Comma-separated list, e.g. http://localhost:4200 */
+const parseCorsOrigins = (value) => {
+  if (!value) return ['http://localhost:4200'];
+  return value.split(',').map((entry) => entry.trim()).filter(Boolean);
+};
 
 const isLocalhostOrigin = (origin) =>
   /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
 
 /**
- * CORS origin callback — in development, any localhost port is allowed.
+ * CORS origin callback — in development, any localhost port is allowed
+ * (Angular dev-server / SSR may use ports other than 4200).
  */
 const resolveCorsOrigin = (origin, callback) => {
   if (!origin) {
     return callback(null, true);
   }
 
-  const allowedOrigins = parseCorsOrigins(env.CORS_ORIGIN);
+  const allowedOrigins = parseCorsOrigins(process.env.CORS_ORIGIN);
 
   if (allowedOrigins.includes(origin)) {
     return callback(null, true);
@@ -60,12 +33,78 @@ const resolveCorsOrigin = (origin, callback) => {
   return callback(new Error(`Origin ${origin} not allowed by CORS`));
 };
 
-module.exports = {
-  ...env,
+/**
+ * Centralized application configuration.
+ * Validate required secrets in production before scaling out.
+ */
+const config = Object.freeze({
+  env: process.env.NODE_ENV || 'development',
+  port: parseInt(process.env.PORT, 10) || 5800,
+  apiPrefix: process.env.API_PREFIX || '/api/v1',
   isProduction,
-  apiPrefix: '/api/v1',
+
+  mongodb: {
+    uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/carehub',
+    maxPoolSize: parseInt(process.env.MONGODB_POOL_SIZE, 10) || 50,
+  },
+
+  jwt: {
+    secret: process.env.JWT_SECRET || 'dev-jwt-secret-change-me',
+    expiresIn: process.env.JWT_EXPIRES_IN || '15m',
+    refreshSecret: process.env.JWT_REFRESH_SECRET || 'dev-refresh-secret-change-me',
+    refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '30d',
+  },
+
   cors: {
-    allowedOrigins: parseCorsOrigins(env.CORS_ORIGIN),
+    allowedOrigins: parseCorsOrigins(process.env.CORS_ORIGIN),
     origin: resolveCorsOrigin,
   },
-};
+
+  rateLimit: {
+    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 15 * 60 * 1000,
+    max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS, 10) || 100,
+  },
+
+  bcrypt: {
+    saltRounds: parseInt(process.env.BCRYPT_SALT_ROUNDS, 10) || 12,
+  },
+
+  frontend: {
+    url: process.env.FRONTEND_URL || 'http://localhost:4200',
+  },
+
+  passwordReset: {
+    expiresInMs: parseInt(process.env.PASSWORD_RESET_EXPIRES_MS, 10) || 60 * 60 * 1000,
+  },
+
+  storage: {
+    uploadDir: process.env.UPLOAD_DIR || 'uploads',
+    maxFileSizeMb: parseInt(process.env.MAX_UPLOAD_MB, 10) || 5,
+  },
+
+  redis: {
+    url: process.env.REDIS_URL || 'redis://127.0.0.1:6379',
+    enabled: process.env.REDIS_ENABLED !== 'false',
+  },
+
+  smtp: {
+    host: process.env.SMTP_HOST || '',
+    port: parseInt(process.env.SMTP_PORT, 10) || 587,
+    secure: process.env.SMTP_SECURE === 'true',
+    user: process.env.SMTP_USER || '',
+    pass: process.env.SMTP_PASS || '',
+    from: process.env.SMTP_FROM || 'CareHub <noreply@carehub.local>',
+  },
+});
+
+if (isProduction) {
+  const missing = [];
+  if (!process.env.JWT_SECRET) missing.push('JWT_SECRET');
+  if (!process.env.JWT_REFRESH_SECRET) missing.push('JWT_REFRESH_SECRET');
+  if (!process.env.MONGODB_URI) missing.push('MONGODB_URI');
+  if (missing.length) {
+    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+  }
+}
+
+module.exports = config;

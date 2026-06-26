@@ -1,42 +1,17 @@
 const mongoose = require('mongoose');
 
-const medicalSpecialtySchema = new mongoose.Schema(
+const specialtySchema = new mongoose.Schema(
   {
-    name: {
-      type: String,
-      required: true,
-      trim: true,
-      maxlength: 150,
-    },
-    slug: {
-      type: String,
-      required: true,
-      unique: true,
-      lowercase: true,
-      trim: true,
-    },
-    description: {
-      type: String,
-      trim: true,
-      maxlength: 1000,
-    },
-    icon: {
-      type: String,
-      trim: true,
-      maxlength: 50,
-    },
-    isActive: {
-      type: Boolean,
-      default: true,
-    },
+    name: { type: String, required: true, trim: true, unique: true },
+    slug: { type: String, required: true, trim: true, lowercase: true, unique: true },
+    description: { type: String, trim: true, default: '' },
+    icon: { type: String, trim: true, default: '' },
+    isActive: { type: Boolean, default: true, index: true },
   },
-  {
-    timestamps: true,
-  },
+  { timestamps: true },
 );
 
-const MedicalSpecialty =
-  mongoose.models.MedicalSpecialty ||
-  mongoose.model('MedicalSpecialty', medicalSpecialtySchema);
+const Specialty =
+  mongoose.models.Specialty || mongoose.model('Specialty', specialtySchema);
 
-module.exports = MedicalSpecialty;
+module.exports = { Specialty };

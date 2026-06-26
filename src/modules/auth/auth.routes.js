@@ -1,36 +1,67 @@
-const express = require('express');
+const { Router } = require('express');
+const asyncHandler = require('../../core/utils/asyncHandler');
+const { authenticate } = require('../../core/middleware/auth.middleware');
+const { validate } = require('../../shared/middleware/validate.middleware');
+const { authLimiter } = require('../../shared/middleware/rateLimit.middleware');
 const authController = require('./auth.controller');
 const {
   registerSchema,
   loginSchema,
-  refreshSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
-  changePasswordSchema,
 } = require('./auth.validator');
-const { validateBody } = require('../../shared/middleware/validate.middleware');
-const { authenticate } = require('../../shared/middleware/auth.middleware');
-const { authRateLimiter } = require('../../shared/middleware/rateLimit.middleware');
 
-const router = express.Router();
+const router = Router();
 
-router.post('/register', authRateLimiter, validateBody(registerSchema), authController.register);
-router.post('/login', authRateLimiter, validateBody(loginSchema), authController.login);
-router.post('/refresh', validateBody(refreshSchema), authController.refresh);
-router.post('/logout', authenticate, authController.logout);
-router.get('/me', authenticate, authController.getProfile);
+/**
+ * @openapi
+ * /auth/register:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Register a new user account
+ */
+router.post(
+  '/register',
+  authLimiter,
+  validate(registerSchema),
+  asyncHandler(authController.register),
+);
+
+/**
+ * @openapi
+ * /auth/login:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Login and receive JWT access token
+ */
+router.post(
+  '/login',
+  authLimiter,
+  validate(loginSchema),
+  asyncHandler(authController.login),
+);
+
+/**
+ * @openapi
+ * /auth/me:
+ *   get:
+ *     tags: [Auth]
+ *     summary: Get current authenticated user profile
+ */
+router.get('/me', authenticate, asyncHandler(authController.getMe));
+
 router.post(
   '/forgot-password',
-  authRateLimiter,
-  validateBody(forgotPasswordSchema),
-  authController.forgotPassword,
+  authLimiter,
+  validate(forgotPasswordSchema),
+  asyncHandler(authController.requestPasswordReset),
 );
-router.post('/reset-password', validateBody(resetPasswordSchema), authController.resetPassword);
+
 router.post(
-  '/change-password',
-  authenticate,
-  validateBody(changePasswordSchema),
-  authController.changePassword,
+  '/reset-password',
+  authLimiter,
+  validate(resetPasswordSchema),
+  asyncHandler(authController.resetPassword),
 );
 
 module.exports = router;

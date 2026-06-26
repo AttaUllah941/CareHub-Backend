@@ -1,54 +1,34 @@
-const { successResponse } = require('../../shared/utils/apiResponse');
-const asyncHandler = require('../../shared/utils/asyncHandler');
 const authService = require('./auth.service');
 
-const register = asyncHandler(async (req, res) => {
-  const data = await authService.register(req.body);
-  res.status(201).json(successResponse(data, 'Registration successful'));
-});
+const register = async (req, res) => {
+  const result = await authService.register(req.body);
+  res.status(201).json({ success: true, message: 'Registration successful', data: result });
+};
 
-const login = asyncHandler(async (req, res) => {
-  const data = await authService.login(req.body);
-  res.status(200).json(successResponse(data, 'Login successful'));
-});
+const login = async (req, res) => {
+  const result = await authService.login(req.body);
+  res.json({ success: true, message: 'Login successful', data: result });
+};
 
-const refresh = asyncHandler(async (req, res) => {
-  const data = await authService.refresh(req.body);
-  res.status(200).json(successResponse(data, 'Token refreshed'));
-});
+const getMe = async (req, res) => {
+  const result = await authService.getMe(req.user.id);
+  res.json({ success: true, message: 'Profile retrieved', data: result });
+};
 
-const logout = asyncHandler(async (req, res) => {
-  await authService.logout(req.user.id);
-  res.status(200).json(successResponse({ message: 'Logged out successfully' }, 'Logged out successfully'));
-});
+const requestPasswordReset = async (req, res) => {
+  const result = await authService.requestPasswordReset(req.body.email);
+  res.json({ success: true, message: result.message, data: result });
+};
 
-const getProfile = asyncHandler(async (req, res) => {
-  const data = await authService.getProfile(req.user.id);
-  res.status(200).json(successResponse(data, 'Profile retrieved'));
-});
-
-const forgotPassword = asyncHandler(async (req, res) => {
-  const data = await authService.forgotPassword(req.body);
-  res.status(200).json(successResponse(data, data.message));
-});
-
-const resetPassword = asyncHandler(async (req, res) => {
-  const data = await authService.resetPassword(req.body);
-  res.status(200).json(successResponse(data, data.message));
-});
-
-const changePassword = asyncHandler(async (req, res) => {
-  const data = await authService.changePassword(req.user.id, req.body);
-  res.status(200).json(successResponse(data, data.message));
-});
+const resetPassword = async (req, res) => {
+  const result = await authService.resetPassword(req.body);
+  res.json({ success: true, message: result.message, data: result });
+};
 
 module.exports = {
   register,
   login,
-  refresh,
-  logout,
-  getProfile,
-  forgotPassword,
+  getMe,
+  requestPasswordReset,
   resetPassword,
-  changePassword,
 };
