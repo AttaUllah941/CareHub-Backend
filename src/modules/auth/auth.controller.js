@@ -25,10 +25,28 @@ const resetPassword = async (req, res) => {
   res.json({ success: true, message: result.message, data: result });
 };
 
+const refresh = async (req, res) => {
+  const result = await authService.refreshSession(req.body.refreshToken);
+  res.json({ success: true, message: 'Token refreshed', data: result });
+};
+
+const logout = async (_req, res) => {
+  const result = await authService.logout();
+  res.json({ success: true, message: result.message, data: result });
+};
+
+const changePassword = async (req, res) => {
+  const result = await authService.changePassword(req.user.id, req.body);
+  res.json({ success: true, message: result.message, data: result });
+};
+
 module.exports = {
   register,
   login,
   getMe,
   requestPasswordReset,
   resetPassword,
+  refresh,
+  logout,
+  changePassword,
 };

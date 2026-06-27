@@ -277,13 +277,10 @@ const ensureDoctorProfile = async (userId) => {
 
   await doctorsRepository.create({
     userId: user._id,
-    firstName: user.firstName,
-    lastName: user.lastName,
     fullName: `${user.firstName} ${user.lastName}`.trim(),
     specialtyIds: [],
     languageIds: [],
     qualifications: [],
-    workHistory: [],
     currency: 'PKR',
     verificationStatus: 'PENDING',
   });

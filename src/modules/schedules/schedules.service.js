@@ -103,13 +103,28 @@ const listMySchedules = async (doctor) => {
   const schedules = await schedulesRepository.findByDoctorId(doctor._id);
 
   return {
-    schedules: schedules.map(toScheduleResponse),
+    schedules: schedules.filter((schedule) => schedule.isActive).map(toScheduleResponse),
   };
+};
+
+const deactivateSchedule = async (doctor, scheduleId) => {
+  if (!schedulesRepository.isValidObjectId(scheduleId)) {
+    throw new AppError('Schedule not found', 404);
+  }
+
+  const schedule = await schedulesRepository.findById(scheduleId);
+  if (!schedule || schedule.doctorId.toString() !== doctor._id.toString()) {
+    throw new AppError('Schedule not found', 404);
+  }
+
+  const updated = await schedulesRepository.updateById(scheduleId, { isActive: false });
+  return { schedule: toScheduleResponse(updated) };
 };
 
 module.exports = {
   getAvailability,
   createSchedule,
   listMySchedules,
+  deactivateSchedule,
   toScheduleResponse,
 };

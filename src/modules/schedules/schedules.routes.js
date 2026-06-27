@@ -25,4 +25,12 @@ router.get(
   schedulesController.listMine,
 );
 
+router.delete(
+  '/:id',
+  authenticate,
+  authorize('DOCTOR'),
+  loadDoctorProfile,
+  schedulesController.deactivate,
+);
+
 module.exports = router;

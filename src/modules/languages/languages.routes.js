@@ -5,8 +5,8 @@ const {
   updateLanguageSchema,
 } = require('./languages.validator');
 const { validateBody } = require('../../shared/middleware/validate.middleware');
-const { authenticate } = require('../../shared/middleware/auth.middleware');
-const { authorize } = require('../../shared/middleware/role.middleware');
+const { authenticate, authorize } = require('../../core/middleware/auth.middleware');
+const { UserRole } = require('../../shared/enums/userRole.enum');
 
 const router = express.Router();
 
@@ -16,7 +16,7 @@ router.get('/public/:slug', languagesController.getPublicBySlug);
 router.post(
   '/',
   authenticate,
-  authorize('ADMIN', 'SUPER_ADMIN'),
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
   validateBody(createLanguageSchema),
   languagesController.create,
 );
@@ -24,7 +24,7 @@ router.post(
 router.put(
   '/:id',
   authenticate,
-  authorize('ADMIN', 'SUPER_ADMIN'),
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
   validateBody(updateLanguageSchema),
   languagesController.update,
 );
@@ -32,7 +32,7 @@ router.put(
 router.delete(
   '/:id',
   authenticate,
-  authorize('ADMIN', 'SUPER_ADMIN'),
+  authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN),
   languagesController.remove,
 );
 

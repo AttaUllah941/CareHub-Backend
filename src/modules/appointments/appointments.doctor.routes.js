@@ -2,8 +2,8 @@ const express = require('express');
 const appointmentsController = require('./appointments.controller');
 const { rejectAppointmentSchema } = require('./appointments.validator');
 const { validateBody } = require('../../shared/middleware/validate.middleware');
-const { authenticate } = require('../../shared/middleware/auth.middleware');
-const { authorize } = require('../../shared/middleware/role.middleware');
+const { authenticate, authorize } = require('../../core/middleware/auth.middleware');
+const { UserRole } = require('../../shared/enums/userRole.enum');
 const { loadDoctorProfile } = require('../../shared/middleware/resourceOwner.middleware');
 
 const router = express.Router();
@@ -11,7 +11,7 @@ const router = express.Router();
 router.get(
   '/',
   authenticate,
-  authorize('DOCTOR'),
+  authorize(UserRole.DOCTOR),
   loadDoctorProfile,
   appointmentsController.listDoctorAppointments,
 );
@@ -19,7 +19,7 @@ router.get(
 router.patch(
   '/:id/confirm',
   authenticate,
-  authorize('DOCTOR'),
+  authorize(UserRole.DOCTOR),
   loadDoctorProfile,
   appointmentsController.confirm,
 );
@@ -27,7 +27,7 @@ router.patch(
 router.patch(
   '/:id/complete',
   authenticate,
-  authorize('DOCTOR'),
+  authorize(UserRole.DOCTOR),
   loadDoctorProfile,
   appointmentsController.complete,
 );
@@ -35,7 +35,7 @@ router.patch(
 router.patch(
   '/:id/reject',
   authenticate,
-  authorize('DOCTOR'),
+  authorize(UserRole.DOCTOR),
   loadDoctorProfile,
   validateBody(rejectAppointmentSchema),
   appointmentsController.reject,

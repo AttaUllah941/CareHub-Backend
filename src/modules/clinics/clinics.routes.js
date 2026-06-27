@@ -26,6 +26,14 @@ router.post(
   clinicsController.create,
 );
 
+router.get(
+  '/me',
+  authenticate,
+  authorize('DOCTOR'),
+  loadDoctorProfile,
+  clinicsController.listMine,
+);
+
 router.put(
   '/:id',
   authenticate,

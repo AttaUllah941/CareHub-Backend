@@ -7,7 +7,7 @@ const {
   UnauthorizedError,
 } = require('../../core/errors/AppError');
 const config = require('../../config');
-const { generateTokens } = require('../../core/utils/token.utils');
+const { generateTokens, verifyRefreshToken } = require('../../core/utils/token.utils');
 const { PUBLIC_REGISTRATION_ROLES } = require('../../shared/enums/userRole.enum');
 const usersRepository = require('../users/users.repository');
 const authRepository = require('./auth.repository');
@@ -63,7 +63,8 @@ const register = async (payload) => {
 
   return {
     user: toUserResponse(user),
-    tokens,
+    accessToken: tokens.accessToken,
+    refreshToken: tokens.refreshToken,
   };
 };
 
@@ -86,7 +87,8 @@ const login = async ({ email, password }) => {
 
   return {
     user: toUserResponse(user),
-    tokens,
+    accessToken: tokens.accessToken,
+    refreshToken: tokens.refreshToken,
   };
 };
 
@@ -139,11 +141,59 @@ const resetPassword = async ({ token, password }) => {
   return { message: 'Password has been reset successfully' };
 };
 
+const refreshSession = async (refreshToken) => {
+  if (!refreshToken) {
+    throw new BadRequestError('Refresh token is required');
+  }
+
+  let decoded;
+  try {
+    decoded = verifyRefreshToken(refreshToken);
+  } catch {
+    throw new UnauthorizedError('Invalid or expired refresh token');
+  }
+
+  const user = await usersRepository.findById(decoded.sub);
+  if (!user || !user.isActive) {
+    throw new UnauthorizedError('Account is inactive or no longer exists');
+  }
+
+  const tokens = generateTokens(user._id.toString(), user.role);
+
+  return {
+    user: toUserResponse(user),
+    accessToken: tokens.accessToken,
+    refreshToken: tokens.refreshToken,
+  };
+};
+
+const logout = async () => ({ message: 'Logged out successfully' });
+
+const changePassword = async (userId, { currentPassword, newPassword }) => {
+  const user = await usersRepository.findById(userId);
+  if (!user) {
+    throw new NotFoundError('User not found');
+  }
+
+  const passwordMatches = await bcrypt.compare(currentPassword, user.passwordHash);
+  if (!passwordMatches) {
+    throw new UnauthorizedError('Current password is incorrect');
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, config.bcrypt.saltRounds);
+  await usersRepository.updateById(userId, { passwordHash });
+
+  return { message: 'Password changed successfully' };
+};
+
 module.exports = {
   register,
   login,
   getMe,
   requestPasswordReset,
   resetPassword,
+  refreshSession,
+  logout,
+  changePassword,
   toUserResponse,
 };

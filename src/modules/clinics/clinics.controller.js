@@ -22,8 +22,14 @@ const remove = asyncHandler(async (req, res) => {
   res.status(200).json(successResponse(data, 'Clinic deactivated'));
 });
 
+const listMine = asyncHandler(async (req, res) => {
+  const data = await clinicsService.listForDoctor(req.doctor);
+  res.status(200).json(successResponse(data, 'Clinics retrieved'));
+});
+
 module.exports = {
   listByDoctor,
+  listMine,
   create,
   update,
   remove,

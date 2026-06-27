@@ -3,6 +3,7 @@ const {
   ForbiddenError,
   NotFoundError,
 } = require('../../core/errors/AppError');
+const { parsePaginationQuery, buildPaginationMeta } = require('../../core/utils/pagination.util');
 const doctorsRepository = require('../doctors/doctors.repository');
 const usersRepository = require('../users/users.repository');
 const appointmentsRepository = require('./appointments.repository');
@@ -26,6 +27,12 @@ const toAppointmentResponse = (appointment) => ({
   scheduledAt: appointment.scheduledAt?.toISOString(),
   patientName: appointment.patientName || '',
   patientEmail: appointment.patientEmail || '',
+  patientPhone:
+    appointment.patientId?.phone ||
+    appointment.patientPhone ||
+    '',
+  consultationType: appointment.consultationType || 'video',
+  doctorName: appointment.doctorId?.fullName || '',
   createdAt: appointment.createdAt?.toISOString(),
   updatedAt: appointment.updatedAt?.toISOString(),
 });
@@ -134,8 +141,155 @@ const cancelAppointment = async (id, user) => {
   return { appointment: toAppointmentResponse(updated) };
 };
 
+const createAppointment = async (payload, user) => {
+  if (!doctorsRepository.isValidObjectId(payload.doctorId)) {
+    throw new NotFoundError('Doctor not found');
+  }
+
+  const doctor = await doctorsRepository.findById(payload.doctorId);
+  if (!doctor || doctor.verificationStatus !== 'VERIFIED') {
+    throw new NotFoundError('Doctor not found');
+  }
+
+  const scheduledAt = new Date(payload.scheduledAt);
+  if (Number.isNaN(scheduledAt.getTime()) || scheduledAt <= new Date()) {
+    throw new BadRequestError('scheduledAt must be a future date-time');
+  }
+
+  let patientId = null;
+  let patientName = payload.patientName?.trim() || '';
+  let patientEmail = payload.patientEmail?.trim().toLowerCase() || '';
+  let patientPhone = payload.patientPhone?.trim() || '';
+
+  if (user?.id) {
+    const patient = await usersRepository.findById(user.id);
+    if (!patient) {
+      throw new NotFoundError('User not found');
+    }
+
+    patientId = patient._id;
+    patientName = `${patient.firstName} ${patient.lastName}`.trim();
+    patientEmail = patient.email;
+    patientPhone = patientPhone || patient.phone || '';
+  } else if (!patientName || !patientEmail) {
+    throw new BadRequestError('patientName and patientEmail are required for guest bookings');
+  }
+
+  const appointment = await appointmentsRepository.create({
+    doctorId: doctor._id,
+    patientId,
+    scheduledAt,
+    patientName,
+    patientEmail,
+    patientPhone,
+    consultationType: payload.consultationType || 'video',
+    status: 'pending',
+  });
+
+  const populated = await appointmentsRepository.findById(appointment._id);
+  return { appointment: toAppointmentResponse(populated) };
+};
+
+const listPatientAppointments = async (user, query) => {
+  const { page, limit, skip, sort } = parsePaginationQuery(query, ['scheduledAt', 'createdAt']);
+
+  const [appointments, total] = await Promise.all([
+    appointmentsRepository.findByPatientId(user.id, {
+      skip,
+      limit,
+      sort,
+      status: query.status,
+    }),
+    appointmentsRepository.countByPatientId(user.id, { status: query.status }),
+  ]);
+
+  return {
+    appointments: appointments.map(toAppointmentResponse),
+    pagination: buildPaginationMeta(page, limit, total),
+  };
+};
+
+const listDoctorAppointments = async (doctorUser, query) => {
+  const doctor = await doctorsRepository.findByUserId(doctorUser.id);
+  if (!doctor) {
+    throw new NotFoundError('Doctor profile not found');
+  }
+
+  const { page, limit, skip, sort } = parsePaginationQuery(query, ['scheduledAt', 'createdAt']);
+
+  const [appointments, total] = await Promise.all([
+    appointmentsRepository.findByDoctorId(doctor._id, {
+      skip,
+      limit,
+      sort,
+      status: query.status,
+    }),
+    appointmentsRepository.countByDoctorId(doctor._id, { status: query.status }),
+  ]);
+
+  return {
+    appointments: appointments.map(toAppointmentResponse),
+    pagination: buildPaginationMeta(page, limit, total),
+  };
+};
+
+const completeAppointment = async (id, doctorUser) => {
+  const appointment = await getAppointmentOrThrow(id);
+  const doctor = await doctorsRepository.findById(
+    appointment.doctorId?._id || appointment.doctorId,
+  );
+
+  if (!doctor || doctor.userId.toString() !== doctorUser.id) {
+    throw new ForbiddenError('You can only complete your own appointments');
+  }
+
+  if (appointment.status !== 'confirmed') {
+    throw new BadRequestError(`Cannot complete an appointment with status "${appointment.status}"`);
+  }
+
+  const updated = await appointmentsRepository.updateById(id, { status: 'completed' });
+  return { appointment: toAppointmentResponse(updated) };
+};
+
+const rejectAppointment = async (id, doctorUser, rejectionReason) => {
+  const appointment = await getAppointmentOrThrow(id);
+  const doctor = await doctorsRepository.findById(
+    appointment.doctorId?._id || appointment.doctorId,
+  );
+
+  if (!doctor || doctor.userId.toString() !== doctorUser.id) {
+    throw new ForbiddenError('You can only reject your own appointments');
+  }
+
+  if (appointment.status !== 'pending') {
+    throw new BadRequestError(`Cannot reject an appointment with status "${appointment.status}"`);
+  }
+
+  const updated = await appointmentsRepository.updateById(id, { status: 'rejected' });
+  const { patientName, patientEmail, patientUserId } = resolvePatientDetails(updated);
+  const { doctorName, doctorUserId, doctorEmail } = await resolveDoctorDetails(updated);
+  const scheduledAt = formatScheduledAt(updated.scheduledAt);
+
+  await notifyAppointmentCancelled({
+    patientUserId,
+    doctorUserId,
+    patientEmail,
+    doctorEmail,
+    patientName,
+    doctorName,
+    scheduledAt,
+  });
+
+  return { appointment: toAppointmentResponse(updated) };
+};
+
 module.exports = {
+  createAppointment,
+  listPatientAppointments,
+  listDoctorAppointments,
   confirmAppointment,
   cancelAppointment,
+  completeAppointment,
+  rejectAppointment,
   toAppointmentResponse,
 };

@@ -88,9 +88,15 @@ const deleteClinic = async (clinic) => {
   return { clinic: toClinicResponse(updated) };
 };
 
+const listForDoctor = async (doctor) => {
+  const clinics = await clinicsRepository.findActiveByDoctorId(doctor._id);
+  return { clinics: clinics.map(toClinicResponse) };
+};
+
 module.exports = {
   toClinicResponse,
   listByDoctorId,
+  listForDoctor,
   createForDoctor,
   updateClinic,
   deleteClinic,

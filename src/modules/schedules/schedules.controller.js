@@ -17,8 +17,14 @@ const listMine = asyncHandler(async (req, res) => {
   res.status(200).json(successResponse(data, 'Schedules retrieved'));
 });
 
+const deactivate = asyncHandler(async (req, res) => {
+  const data = await schedulesService.deactivateSchedule(req.doctor, req.params.id);
+  res.status(200).json(successResponse(data, 'Schedule removed'));
+});
+
 module.exports = {
   getAvailability,
   create,
   listMine,
+  deactivate,
 };

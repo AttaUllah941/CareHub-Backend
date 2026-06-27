@@ -15,6 +15,9 @@ const findActiveForDoctorAndDate = (doctorId, dayOfWeek, dateString) =>
 
 const create = (data) => DoctorSchedule.create(data);
 
+const updateById = (id, data) =>
+  DoctorSchedule.findByIdAndUpdate(id, data, { new: true, runValidators: true });
+
 const isValidObjectId = (value) => mongoose.Types.ObjectId.isValid(value);
 
 module.exports = {
@@ -22,5 +25,6 @@ module.exports = {
   findByDoctorId,
   findActiveForDoctorAndDate,
   create,
+  updateById,
   isValidObjectId,
 };

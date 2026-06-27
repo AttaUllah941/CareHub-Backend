@@ -9,6 +9,8 @@ const {
   loginSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
+  refreshTokenSchema,
+  changePasswordSchema,
 } = require('./auth.validator');
 
 const router = Router();
@@ -62,6 +64,22 @@ router.post(
   authLimiter,
   validate(resetPasswordSchema),
   asyncHandler(authController.resetPassword),
+);
+
+router.post(
+  '/refresh',
+  authLimiter,
+  validate(refreshTokenSchema),
+  asyncHandler(authController.refresh),
+);
+
+router.post('/logout', authenticate, asyncHandler(authController.logout));
+
+router.post(
+  '/change-password',
+  authenticate,
+  validate(changePasswordSchema),
+  asyncHandler(authController.changePassword),
 );
 
 module.exports = router;
