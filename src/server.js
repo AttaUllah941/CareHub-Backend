@@ -14,9 +14,9 @@ const logger = require('./core/utils/logger');
  */
 const startServer = async () => {
   await connectDatabase();
-  await connectRedis();
+  const redisClient = await connectRedis();
 
-  const emailQueue = await initEmailQueue();
+  const emailQueue = await initEmailQueue(redisClient);
   if (emailQueue) {
     startEmailProcessor(emailQueue);
   }

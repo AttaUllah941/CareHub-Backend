@@ -12,6 +12,10 @@ const createEmailQueue = () => {
   }
 
   return new Bull('email', config.redis.url, {
+    redis: {
+      maxRetriesPerRequest: null,
+      enableReadyCheck: false,
+    },
     defaultJobOptions: {
       attempts: 3,
       backoff: {
@@ -37,34 +41,57 @@ const getEmailQueue = () => {
 };
 
 const enqueueEmail = async (payload) => {
-  const queue = getEmailQueue();
-
-  if (!queue || !queueReady) {
+  if (!config.redis.enabled || !queueReady) {
     await processEmailJob(payload);
     return { queued: false, fallback: true };
   }
 
-  const job = await queue.add(payload);
-  return { queued: true, jobId: job.id };
+  const queue = getEmailQueue();
+  if (!queue) {
+    await processEmailJob(payload);
+    return { queued: false, fallback: true };
+  }
+
+  try {
+    const job = await queue.add(payload);
+    return { queued: true, jobId: job.id };
+  } catch (error) {
+    queueReady = false;
+    logger.warn(`Email queue add failed (${error.message}) — using in-process fallback`);
+    await processEmailJob(payload);
+    return { queued: false, fallback: true };
+  }
 };
 
-const initEmailQueue = async () => {
+const initEmailQueue = async (redisClient = null) => {
+  if (!config.redis.enabled) {
+    queueReady = false;
+    return null;
+  }
+
+  if (!redisClient) {
+    queueReady = false;
+    logger.warn('Email queue unavailable — Redis not connected, using in-process fallback');
+    return null;
+  }
+
+  try {
+    await redisClient.ping();
+  } catch (error) {
+    queueReady = false;
+    logger.warn(`Email queue unavailable (${error.message}) — using in-process fallback`);
+    return null;
+  }
+
   const queue = getEmailQueue();
   if (!queue) {
     queueReady = false;
     return null;
   }
 
-  try {
-    await queue.isReady();
-    queueReady = true;
-    logger.info('Email queue ready');
-    return queue;
-  } catch (error) {
-    queueReady = false;
-    logger.warn(`Email queue unavailable (${error.message}) — using in-process fallback`);
-    return null;
-  }
+  queueReady = true;
+  logger.info('Email queue ready');
+  return queue;
 };
 
 const closeEmailQueue = async () => {
