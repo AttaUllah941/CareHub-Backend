@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const { generateBookingRef } = require('../../shared/utils/bookingRef.util');
 
 const APPOINTMENT_STATUSES = ['pending', 'confirmed', 'completed', 'cancelled', 'rejected'];
+const CONSULTATION_TYPES = ['video', 'clinic'];
 
 const appointmentSchema = new mongoose.Schema(
   {
@@ -31,6 +32,13 @@ const appointmentSchema = new mongoose.Schema(
     },
     patientName: { type: String, trim: true, default: '' },
     patientEmail: { type: String, trim: true, lowercase: true, default: '' },
+    patientPhone: { type: String, trim: true, default: '' },
+    consultationType: {
+      type: String,
+      enum: CONSULTATION_TYPES,
+      default: 'video',
+      index: true,
+    },
     status: {
       type: String,
       enum: APPOINTMENT_STATUSES,
@@ -53,4 +61,4 @@ appointmentSchema.pre('save', function assignBookingRef(next) {
 const Appointment =
   mongoose.models.Appointment || mongoose.model('Appointment', appointmentSchema);
 
-module.exports = { Appointment, APPOINTMENT_STATUSES };
+module.exports = { Appointment, APPOINTMENT_STATUSES, CONSULTATION_TYPES };

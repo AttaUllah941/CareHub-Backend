@@ -1,43 +1,36 @@
-const { Specialty } = require('./specialties.model');
+const MedicalSpecialty = require('./specialties.model');
 
-const findAllActive = () => Specialty.find({ isActive: true }).sort({ name: 1 });
-
-const findById = (id) => Specialty.findById(id);
-
-const findBySlug = (slug) => Specialty.findOne({ slug: slug.toLowerCase() });
-
-const findAll = ({ page, limit, skip, sort, search, isActive }) => {
-  const filter = {};
-
-  if (isActive !== undefined) {
-    filter.isActive = isActive;
-  }
+const findActive = (search) => {
+  const filter = { isActive: true };
 
   if (search) {
-    const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(escaped, 'i');
-    filter.$or = [{ name: regex }, { slug: regex }, { description: regex }];
+    const pattern = new RegExp(search.trim(), 'i');
+    filter.$or = [{ name: pattern }, { slug: pattern }, { description: pattern }];
   }
 
-  return Promise.all([
-    Specialty.find(filter).sort(sort).skip(skip).limit(limit),
-    Specialty.countDocuments(filter),
-  ]);
+  return MedicalSpecialty.find(filter).sort({ name: 1 });
 };
 
-const create = (data) => Specialty.create(data);
+const findActiveBySlug = (slug) =>
+  MedicalSpecialty.findOne({ slug: slug.toLowerCase(), isActive: true });
+
+const findById = (id) => MedicalSpecialty.findById(id);
+
+const findBySlug = (slug) => MedicalSpecialty.findOne({ slug: slug.toLowerCase() });
+
+const create = (data) => MedicalSpecialty.create(data);
 
 const updateById = (id, data) =>
-  Specialty.findByIdAndUpdate(id, data, { new: true, runValidators: true });
+  MedicalSpecialty.findByIdAndUpdate(id, data, { new: true, runValidators: true });
 
 const softDeleteById = (id) =>
-  Specialty.findByIdAndUpdate(id, { isActive: false }, { new: true, runValidators: true });
+  MedicalSpecialty.findByIdAndUpdate(id, { isActive: false }, { new: true });
 
 module.exports = {
-  findAllActive,
+  findActive,
+  findActiveBySlug,
   findById,
   findBySlug,
-  findAll,
   create,
   updateById,
   softDeleteById,
