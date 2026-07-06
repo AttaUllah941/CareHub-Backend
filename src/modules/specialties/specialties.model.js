@@ -6,6 +6,7 @@ const specialtySchema = new mongoose.Schema(
     slug: { type: String, required: true, trim: true, lowercase: true, unique: true },
     description: { type: String, trim: true, default: '' },
     icon: { type: String, trim: true, default: '' },
+    sortOrder: { type: Number, default: 999, index: true },
     isActive: { type: Boolean, default: true, index: true },
   },
   { timestamps: true },

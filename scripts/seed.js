@@ -22,11 +22,26 @@ const { Pharmacy } = require(path.join(rootDir, 'src/modules/medicines/pharmacie
 const { Medicine } = require(path.join(rootDir, 'src/modules/medicines/medicine.model'));
 
 const SPECIALTIES = [
-  { name: 'Cardiology', description: 'Heart and cardiovascular care', icon: 'heart' },
-  { name: 'Dermatology', description: 'Skin, hair, and nail conditions', icon: 'skin' },
-  { name: 'General Medicine', description: 'Primary and general healthcare', icon: 'stethoscope' },
-  { name: 'Gynecology', description: "Women's health and reproductive care", icon: 'female' },
-  { name: 'Pediatrics', description: 'Child and adolescent healthcare', icon: 'child' },
+  { name: 'General Physician', description: 'Primary care and general health consultations', icon: 'stethoscope', sortOrder: 1 },
+  { name: 'Pediatrician', description: 'Healthcare for infants, children, and adolescents', icon: 'child', sortOrder: 2 },
+  {
+    name: 'Gynecologist & Obstetrician (OB/GYN)',
+    description: "Women's reproductive health, pregnancy, and childbirth care",
+    icon: 'female',
+    sortOrder: 3,
+  },
+  { name: 'Dermatologist', description: 'Skin, hair, and nail conditions', icon: 'skin', sortOrder: 4 },
+  { name: 'Cardiologist', description: 'Heart and cardiovascular care', icon: 'heart', sortOrder: 5 },
+  { name: 'Gastroenterologist', description: 'Digestive system and gastrointestinal care', icon: 'stethoscope', sortOrder: 6 },
+  { name: 'Orthopedic Surgeon', description: 'Bones, joints, muscles, and musculoskeletal surgery', icon: 'bone', sortOrder: 7 },
+  { name: 'Neurologist', description: 'Brain, spine, and nervous system disorders', icon: 'brain', sortOrder: 8 },
+  { name: 'Ophthalmologist', description: 'Eye care, vision, and ocular surgery', icon: 'eye', sortOrder: 9 },
+  {
+    name: 'ENT Specialist (Otolaryngologist)',
+    description: 'Ear, nose, throat, and head/neck conditions',
+    icon: 'ent',
+    sortOrder: 10,
+  },
 ];
 
 const LANGUAGES = [
@@ -36,9 +51,150 @@ const LANGUAGES = [
 ];
 
 const DEMO_DOCTORS = [
-  { firstName: 'Ayesha', lastName: 'Khan', email: 'dr.ayesha@carehub.test', phone: '+923001000101', city: 'Lahore', title: 'Consultant Physician' },
-  { firstName: 'Hassan', lastName: 'Raza', email: 'dr.hassan@carehub.test', phone: '+923001000102', city: 'Karachi', title: 'Cardiologist' },
-  { firstName: 'Sana', lastName: 'Malik', email: 'dr.sana@carehub.test', phone: '+923001000103', city: 'Islamabad', title: 'Dermatologist' },
+  {
+    firstName: 'Ayesha',
+    lastName: 'Khan',
+    email: 'dr.ayesha@carehub.test',
+    phone: '+923001000101',
+    city: 'Lahore',
+    title: 'Consultant Physician',
+    specialtySlug: 'general-physician',
+    yearsOfExperience: 15,
+    consultationFee: 2000,
+    gender: 'FEMALE',
+  },
+  {
+    firstName: 'Bilal',
+    lastName: 'Ahmed',
+    email: 'dr.bilal@carehub.test',
+    phone: '+923001000104',
+    city: 'Lahore',
+    title: 'Pediatrician',
+    specialtySlug: 'pediatrician',
+    yearsOfExperience: 12,
+    consultationFee: 2200,
+    gender: 'MALE',
+  },
+  {
+    firstName: 'Nadia',
+    lastName: 'Hussain',
+    email: 'dr.nadia@carehub.test',
+    phone: '+923001000105',
+    city: 'Lahore',
+    title: 'Gynecologist',
+    specialtySlug: 'gynecologist-obstetrician-obgyn',
+    yearsOfExperience: 14,
+    consultationFee: 3000,
+    gender: 'FEMALE',
+  },
+  {
+    firstName: 'Sana',
+    lastName: 'Malik',
+    email: 'dr.sana@carehub.test',
+    phone: '+923001000103',
+    city: 'Lahore',
+    title: 'Dermatologist',
+    specialtySlug: 'dermatologist',
+    yearsOfExperience: 10,
+    consultationFee: 2500,
+    gender: 'FEMALE',
+  },
+  {
+    firstName: 'Hassan',
+    lastName: 'Raza',
+    email: 'dr.hassan@carehub.test',
+    phone: '+923001000102',
+    city: 'Lahore',
+    title: 'Cardiologist',
+    specialtySlug: 'cardiologist',
+    yearsOfExperience: 18,
+    consultationFee: 3500,
+    gender: 'MALE',
+  },
+  {
+    firstName: 'Imran',
+    lastName: 'Qureshi',
+    email: 'dr.imran@carehub.test',
+    phone: '+923001000106',
+    city: 'Lahore',
+    title: 'Gastroenterologist',
+    specialtySlug: 'gastroenterologist',
+    yearsOfExperience: 16,
+    consultationFee: 3200,
+    gender: 'MALE',
+  },
+  {
+    firstName: 'Kamran',
+    lastName: 'Sheikh',
+    email: 'dr.kamran@carehub.test',
+    phone: '+923001000107',
+    city: 'Lahore',
+    title: 'Orthopedic Surgeon',
+    specialtySlug: 'orthopedic-surgeon',
+    yearsOfExperience: 20,
+    consultationFee: 4000,
+    gender: 'MALE',
+  },
+  {
+    firstName: 'Laila',
+    lastName: 'Siddiqui',
+    email: 'dr.laila@carehub.test',
+    phone: '+923001000108',
+    city: 'Lahore',
+    title: 'Neurologist',
+    specialtySlug: 'neurologist',
+    yearsOfExperience: 13,
+    consultationFee: 3800,
+    gender: 'FEMALE',
+  },
+  {
+    firstName: 'Omar',
+    lastName: 'Farooq',
+    email: 'dr.omar@carehub.test',
+    phone: '+923001000109',
+    city: 'Lahore',
+    title: 'Ophthalmologist',
+    specialtySlug: 'ophthalmologist',
+    yearsOfExperience: 11,
+    consultationFee: 2800,
+    gender: 'MALE',
+  },
+  {
+    firstName: 'Rabia',
+    lastName: 'Noor',
+    email: 'dr.rabia@carehub.test',
+    phone: '+923001000110',
+    city: 'Lahore',
+    title: 'ENT Specialist',
+    specialtySlug: 'ent-specialist-otolaryngologist',
+    yearsOfExperience: 9,
+    consultationFee: 2600,
+    gender: 'FEMALE',
+  },
+  {
+    firstName: 'Tariq',
+    lastName: 'Mehmood',
+    email: 'dr.tariq@carehub.test',
+    phone: '+923001000111',
+    city: 'Karachi',
+    title: 'Dermatologist',
+    specialtySlug: 'dermatologist',
+    yearsOfExperience: 8,
+    consultationFee: 2400,
+    gender: 'MALE',
+  },
+  {
+    firstName: 'Zainab',
+    lastName: 'Akhtar',
+    email: 'dr.zainab@carehub.test',
+    phone: '+923001000112',
+    city: 'Islamabad',
+    title: 'General Physician',
+    specialtySlug: 'general-physician',
+    yearsOfExperience: 7,
+    consultationFee: 1800,
+    gender: 'FEMALE',
+  },
 ];
 
 const seed = async () => {
@@ -54,6 +210,9 @@ const seed = async () => {
       { upsert: true },
     );
   }
+
+  const activeSlugs = SPECIALTIES.map((item) => slugify(item.name));
+  await Specialty.updateMany({ slug: { $nin: activeSlugs } }, { $set: { isActive: false } });
   console.log(`Seeded ${SPECIALTIES.length} specialties`);
 
   for (const item of LANGUAGES) {
@@ -91,15 +250,32 @@ const seed = async () => {
       });
     }
 
+    const specialty = await Specialty.findOne({ slug: doc.specialtySlug, isActive: true });
+    const english = await Language.findOne({ code: 'en' });
+    const urdu = await Language.findOne({ code: 'ur' });
+
     await Doctor.updateOne(
       { userId: user._id },
       {
         $set: {
           userId: user._id,
           fullName: `${doc.firstName} ${doc.lastName}`,
+          gender: doc.gender ?? 'MALE',
           city: doc.city,
+          country: 'Pakistan',
           title: doc.title,
+          about: `${doc.title} with ${doc.yearsOfExperience}+ years of experience serving patients in ${doc.city}.`,
+          yearsOfExperience: doc.yearsOfExperience ?? 5,
+          consultationFee: doc.consultationFee ?? 2000,
+          currency: 'PKR',
+          specialtyIds: specialty ? [specialty._id] : [],
+          languageIds: [english?._id, urdu?._id].filter(Boolean),
+          qualifications: [
+            { degree: 'MBBS', institution: 'King Edward Medical University', year: 2010 },
+            { degree: 'FCPS', institution: 'College of Physicians and Surgeons Pakistan', year: 2015 },
+          ],
           verificationStatus: 'VERIFIED',
+          isActive: true,
           averageRating: 4.5,
           reviewCount: 12,
         },

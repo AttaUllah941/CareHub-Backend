@@ -17,6 +17,15 @@ const updateRatingStats = (doctorId, { averageRating, reviewCount }) =>
     { new: true, runValidators: true },
   );
 
+const searchVerified = ({ filter, sort, skip, limit }) =>
+  Promise.all([
+    Doctor.find(filter).sort(sort).skip(skip).limit(limit).lean(),
+    Doctor.countDocuments(filter),
+  ]);
+
+const findVerifiedById = (id) =>
+  Doctor.findOne({ _id: id, verificationStatus: 'VERIFIED', isActive: true }).lean();
+
 const isValidObjectId = (value) => mongoose.Types.ObjectId.isValid(value);
 
 module.exports = {
@@ -25,5 +34,7 @@ module.exports = {
   updateById,
   deleteById,
   updateRatingStats,
+  searchVerified,
+  findVerifiedById,
   isValidObjectId,
 };

@@ -1,6 +1,6 @@
 const { Specialty } = require('./specialties.model');
 
-const findAllActive = () => Specialty.find({ isActive: true }).sort({ name: 1 });
+const findAllActive = () => Specialty.find({ isActive: true }).sort({ sortOrder: 1, name: 1 });
 
 const findById = (id) => Specialty.findById(id);
 
