@@ -1,30 +1,31 @@
-const MedicalSpecialty = require('./specialties.model');
+const { Specialty } = require('./specialties.model');
 
 const findActive = (search) => {
   const filter = { isActive: true };
 
   if (search) {
-    const pattern = new RegExp(search.trim(), 'i');
+    const escaped = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const pattern = new RegExp(escaped, 'i');
     filter.$or = [{ name: pattern }, { slug: pattern }, { description: pattern }];
   }
 
-  return MedicalSpecialty.find(filter).sort({ name: 1 });
+  return Specialty.find(filter).sort({ sortOrder: 1, name: 1 });
 };
 
 const findActiveBySlug = (slug) =>
-  MedicalSpecialty.findOne({ slug: slug.toLowerCase(), isActive: true });
+  Specialty.findOne({ slug: slug.toLowerCase(), isActive: true });
 
-const findById = (id) => MedicalSpecialty.findById(id);
+const findById = (id) => Specialty.findById(id);
 
-const findBySlug = (slug) => MedicalSpecialty.findOne({ slug: slug.toLowerCase() });
+const findBySlug = (slug) => Specialty.findOne({ slug: slug.toLowerCase() });
 
-const create = (data) => MedicalSpecialty.create(data);
+const create = (data) => Specialty.create(data);
 
 const updateById = (id, data) =>
-  MedicalSpecialty.findByIdAndUpdate(id, data, { new: true, runValidators: true });
+  Specialty.findByIdAndUpdate(id, data, { new: true, runValidators: true });
 
 const softDeleteById = (id) =>
-  MedicalSpecialty.findByIdAndUpdate(id, { isActive: false }, { new: true });
+  Specialty.findByIdAndUpdate(id, { isActive: false }, { new: true });
 
 module.exports = {
   findActive,

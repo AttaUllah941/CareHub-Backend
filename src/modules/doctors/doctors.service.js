@@ -1,6 +1,7 @@
 const AppError = require('../../shared/errors/AppError');
 const { parsePaginationQuery, buildPaginationMeta } = require('../../shared/utils/pagination');
-const MedicalSpecialty = require('../specialties/specialties.model');
+const { Specialty } = require('../specialties/specialties.model');
+const { User } = require('../users/users.model');
 const doctorsRepository = require('./doctors.repository');
 
 const PUBLIC_SORT_FIELDS = [
@@ -22,6 +23,16 @@ const ADMIN_SORT_FIELDS = [
 
 const DEFAULT_TIME_SLOTS = ['04:30 PM', '05:00 PM', '05:30 PM', '06:00 PM', '06:30 PM', '07:00 PM'];
 
+const LEGACY_SPECIALTY_SLUG_MAP = {
+  cardiology: 'cardiologist',
+  dermatology: 'dermatologist',
+  'general-medicine': 'general-physician',
+  gynecology: 'gynecologist-obstetrician-obgyn',
+  pediatrics: 'pediatrician',
+};
+
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 const toSpecialtyResponse = (specialty) => {
   if (!specialty) return null;
   const id = specialty._id ? specialty._id.toString() : specialty.id;
@@ -30,6 +41,7 @@ const toSpecialtyResponse = (specialty) => {
     name: specialty.name,
     slug: specialty.slug,
     description: specialty.description,
+    icon: specialty.icon || '',
     isActive: specialty.isActive,
   };
 };
@@ -47,7 +59,7 @@ const toLanguageResponse = (language) => {
 
 const toQualificationResponse = (qualification) => ({
   degree: qualification.degree,
-  institution: qualification.institute,
+  institution: qualification.institute || qualification.institution || '',
   year: qualification.year,
 });
 
@@ -130,15 +142,15 @@ const toDoctorSearchResult = (doctor) => ({
   specialtyIds: (doctor.specialtyIds || []).map((s) =>
     s?._id ? s._id.toString() : s?.toString(),
   ),
-  specialties: (doctor.specialtyIds || [])
-    .map(toSpecialtyResponse)
-    .filter(Boolean),
+  specialties: (doctor.specialtyIds || []).map(toSpecialtyResponse).filter(Boolean),
   languageIds: (doctor.languageIds || []).map((l) => (l?._id ? l._id.toString() : l?.toString())),
   languages: (doctor.languageIds || []).map(toLanguageResponse).filter(Boolean),
   clinics: doctor.city
     ? [{ id: `${doctor._id.toString()}-clinic`, name: `${doctor.city} Clinic`, city: doctor.city }]
     : [],
   availableDays: [1, 2, 3, 4, 5],
+  averageRating: doctor.averageRating ?? 0,
+  reviewCount: doctor.reviewCount ?? 0,
 });
 
 const toDoctorDetailProfile = (doctor) => {
@@ -205,8 +217,11 @@ const resolveSpecialtyFilter = async (query) => {
     return specialtyParam;
   }
 
-  const specialty = await MedicalSpecialty.findOne({
-    slug: specialtyParam.toLowerCase(),
+  const normalizedSlug =
+    LEGACY_SPECIALTY_SLUG_MAP[specialtyParam.toLowerCase()] ?? specialtyParam.toLowerCase();
+
+  const specialty = await Specialty.findOne({
+    slug: normalizedSlug,
     isActive: true,
   });
 
@@ -225,12 +240,22 @@ const buildPublicSearchFilter = async (query) => {
   }
 
   if (query.city) {
-    filter.city = new RegExp(`^${query.city.trim()}$`, 'i');
+    filter.city = new RegExp(`^${escapeRegex(query.city.trim())}$`, 'i');
   }
 
   const searchTerm = (query.search || query.name || '').trim();
   if (searchTerm) {
-    filter.$text = { $search: searchTerm };
+    const regex = new RegExp(escapeRegex(searchTerm), 'i');
+    const matchingUsers = await User.find({
+      $or: [{ firstName: regex }, { lastName: regex }],
+    })
+      .select('_id')
+      .lean();
+
+    filter.$or = [{ fullName: regex }, { title: regex }];
+    if (matchingUsers.length) {
+      filter.$or.push({ userId: { $in: matchingUsers.map((user) => user._id) } });
+    }
   }
 
   const minFee = query.minFee !== undefined && query.minFee !== '' ? Number(query.minFee) : null;
@@ -256,7 +281,8 @@ const buildAdminSearchFilter = (query) => {
 
   const searchTerm = (query.search || '').trim();
   if (searchTerm) {
-    filter.$text = { $search: searchTerm };
+    const regex = new RegExp(escapeRegex(searchTerm), 'i');
+    filter.$or = [{ fullName: regex }, { title: regex }];
   }
 
   return filter;
@@ -283,6 +309,7 @@ const ensureDoctorProfile = async (userId) => {
     qualifications: [],
     currency: 'PKR',
     verificationStatus: 'PENDING',
+    isActive: true,
   });
 
   return doctorsRepository.findByUserId(userId);

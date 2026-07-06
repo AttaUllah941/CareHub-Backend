@@ -2,7 +2,10 @@ const mongoose = require('mongoose');
 const { Doctor } = require('./doctors.model');
 const usersRepository = require('../users/users.repository');
 
-const userPopulate = { path: 'userId', select: 'firstName lastName email phone isActive isEmailVerified role createdAt' };
+const userPopulate = {
+  path: 'userId',
+  select: 'firstName lastName email phone isActive isEmailVerified role createdAt',
+};
 const specialtyPopulate = { path: 'specialtyIds', select: 'name slug description isActive' };
 const languagePopulate = { path: 'languageIds', select: 'name code isActive' };
 
@@ -31,6 +34,8 @@ const updateByUserId = (userId, data) =>
     .populate(specialtyPopulate)
     .populate(languagePopulate);
 
+const updateVerificationStatus = (id, data) => updateById(id, data);
+
 const deleteById = (id) => Doctor.findByIdAndDelete(id);
 
 const updateRatingStats = (doctorId, { averageRating, reviewCount }) =>
@@ -43,13 +48,13 @@ const updateRatingStats = (doctorId, { averageRating, reviewCount }) =>
 const isValidObjectId = (value) => mongoose.Types.ObjectId.isValid(value);
 
 const findVerifiedById = (id) =>
-  Doctor.findOne({ _id: id, verificationStatus: 'VERIFIED' })
+  Doctor.findOne({ _id: id, verificationStatus: 'VERIFIED', isActive: true })
     .populate(userPopulate)
     .populate(specialtyPopulate)
     .populate(languagePopulate);
 
 const searchVerified = (filter, { skip, limit, sort }) =>
-  Doctor.find({ ...filter, verificationStatus: 'VERIFIED' })
+  Doctor.find({ ...filter, verificationStatus: 'VERIFIED', isActive: true })
     .populate(userPopulate)
     .populate(specialtyPopulate)
     .populate(languagePopulate)
@@ -58,7 +63,7 @@ const searchVerified = (filter, { skip, limit, sort }) =>
     .limit(limit);
 
 const countVerified = (filter) =>
-  Doctor.countDocuments({ ...filter, verificationStatus: 'VERIFIED' });
+  Doctor.countDocuments({ ...filter, verificationStatus: 'VERIFIED', isActive: true });
 
 const searchAdmin = (filter, { skip, limit, sort }) =>
   Doctor.find(filter)
@@ -79,6 +84,7 @@ module.exports = {
   create,
   updateById,
   updateByUserId,
+  updateVerificationStatus,
   deleteById,
   updateRatingStats,
   searchVerified,

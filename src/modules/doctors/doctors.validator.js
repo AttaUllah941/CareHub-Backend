@@ -1,4 +1,5 @@
 const { z } = require('zod');
+const { paginationQuerySchema, objectIdSchema } = require('../../shared/utils/zodSchemas');
 const { GENDERS, VERIFICATION_STATUSES } = require('./doctors.model');
 
 const qualificationSchema = z.object({
@@ -12,6 +13,20 @@ const workHistorySchema = z.object({
   organization: z.string().trim().min(1).max(200),
   from: z.number().int().min(1950).max(new Date().getFullYear()).optional(),
   to: z.number().int().min(1950).max(new Date().getFullYear()).optional(),
+});
+
+const searchPublicQuerySchema = paginationQuerySchema.extend({
+  city: z.string().trim().optional(),
+  specialtySlug: z.string().trim().optional(),
+  specialty: z.string().trim().optional(),
+  search: z.string().trim().optional(),
+  name: z.string().trim().optional(),
+  minFee: z.coerce.number().min(0).optional(),
+  maxFee: z.coerce.number().min(0).optional(),
+});
+
+const publicDoctorIdParamsSchema = z.object({
+  id: objectIdSchema('id'),
 });
 
 const updateMyProfileSchema = z
@@ -44,6 +59,8 @@ const verificationSchema = z.object({
 });
 
 module.exports = {
+  searchPublicQuerySchema,
+  publicDoctorIdParamsSchema,
   updateMyProfileSchema,
   verificationSchema,
 };

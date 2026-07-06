@@ -44,9 +44,15 @@ const doctorSchema = new mongoose.Schema(
       default: 'PENDING',
     },
     rejectionReason: { type: String, trim: true, default: '' },
+    isActive: { type: Boolean, default: true, index: true },
   },
   { timestamps: true },
 );
+
+doctorSchema.index({ verificationStatus: 1, isActive: 1, city: 1 });
+doctorSchema.index({ specialtyIds: 1 });
+doctorSchema.index({ yearsOfExperience: -1 });
+doctorSchema.index({ consultationFee: 1 });
 
 const Doctor = mongoose.models.Doctor || mongoose.model('Doctor', doctorSchema);
 

@@ -1,5 +1,5 @@
 const AppError = require('../../shared/errors/AppError');
-const slugify = require('../../shared/utils/slugify');
+const { slugify } = require('../../shared/utils/slugify');
 const specialtiesRepository = require('./specialties.repository');
 
 const toSpecialtyResponse = (specialty) => ({
