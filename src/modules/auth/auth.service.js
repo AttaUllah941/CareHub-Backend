@@ -83,6 +83,34 @@ const login = async ({ email, password }) => {
     throw new UnauthorizedError('Invalid email or password');
   }
 
+  return buildAuthResponse(user);
+};
+
+const refresh = async ({ refreshToken }) => {
+  if (!refreshToken) {
+    throw new UnauthorizedError('Refresh token is required');
+  }
+
+  let decoded;
+  try {
+    decoded = verifyRefreshToken(refreshToken);
+  } catch {
+    throw new UnauthorizedError('Invalid or expired refresh token');
+  }
+
+  const user = await usersRepository.findById(decoded.sub);
+  if (!user) {
+    throw new UnauthorizedError('Invalid or expired refresh token');
+  }
+
+  if (!user.isActive) {
+    throw new UnauthorizedError('Account is inactive');
+  }
+
+  return buildAuthResponse(user);
+};
+
+const buildAuthResponse = (user) => {
   const tokens = generateTokens(user._id.toString(), user.role);
 
   return {
@@ -189,6 +217,7 @@ const changePassword = async (userId, { currentPassword, newPassword }) => {
 module.exports = {
   register,
   login,
+  refresh,
   getMe,
   requestPasswordReset,
   resetPassword,
@@ -196,4 +225,5 @@ module.exports = {
   logout,
   changePassword,
   toUserResponse,
+  buildAuthResponse,
 };

@@ -43,6 +43,13 @@ router.post(
   asyncHandler(authController.login),
 );
 
+router.post(
+  '/refresh',
+  authLimiter,
+  validate(refreshSchema),
+  asyncHandler(authController.refresh),
+);
+
 /**
  * @openapi
  * /auth/me:

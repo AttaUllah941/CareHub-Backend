@@ -64,6 +64,7 @@ router.get('/', (_req, res) => {
   }, 'CareHub API is ready');
 });
 
+router.use('/medical-specialties', specialtiesRoutes);
 router.use('/doctors', reviewsDoctorRoutes);
 router.use('/doctors', doctorsPortalRoutes);
 router.use('/doctors', doctorsPublicRoutes);
