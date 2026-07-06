@@ -1,34 +1,54 @@
-const DEFAULT_TIME_SLOTS = ['04:30 PM', '05:00 PM', '05:30 PM', '06:00 PM', '06:30 PM', '07:00 PM'];
+const DEFAULT_TIME_SLOTS = [
+  '09:00 AM',
+  '10:00 AM',
+  '11:00 AM',
+  '12:00 PM',
+  '02:00 PM',
+  '03:00 PM',
+  '04:00 PM',
+  '05:00 PM',
+  '06:00 PM',
+];
 
-const splitFullName = (fullName) => {
-  const parts = (fullName || '').trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return { firstName: '', lastName: '' };
-  if (parts.length === 1) return { firstName: parts[0], lastName: '' };
-  return { firstName: parts[0], lastName: parts.slice(1).join(' ') };
-};
-
-const toSpecialtyChip = (specialty) => {
+const toSpecialtyResponse = (specialty) => {
   if (!specialty) return null;
+  const id = specialty._id ? specialty._id.toString() : specialty.id;
   return {
-    id: specialty._id.toString(),
+    id,
     name: specialty.name,
     slug: specialty.slug,
-    description: specialty.description,
+    description: specialty.description || '',
+    icon: specialty.icon || '',
     isActive: specialty.isActive,
   };
 };
 
-const matchSpecialtyForDoctor = (doctor, specialties) => {
-  const title = (doctor.title || '').toLowerCase();
-  if (!title) return null;
+const toLanguageResponse = (language) => {
+  if (!language) return null;
+  const id = language._id ? language._id.toString() : language.id;
+  return {
+    id,
+    name: language.name,
+    code: language.code,
+    isActive: language.isActive,
+  };
+};
 
-  return (
-    specialties.find((specialty) => {
-      const name = specialty.name.toLowerCase();
-      const slugWords = specialty.slug.replace(/-/g, ' ');
-      return title.includes(name) || title.includes(slugWords) || name.includes(title.replace(/ist$|ian$|logist$/, ''));
-    }) ?? null
-  );
+const toQualificationResponse = (qualification) => ({
+  degree: qualification.degree || '',
+  institution: qualification.institution || qualification.institute || '',
+  year: qualification.year,
+});
+
+const toUserSummary = (doctor) => {
+  const user = doctor.userId;
+  if (!user?.firstName) return undefined;
+
+  return {
+    id: user._id.toString(),
+    firstName: user.firstName,
+    lastName: user.lastName,
+  };
 };
 
 const buildConsultationOptions = (doctor) => {
@@ -43,8 +63,8 @@ const buildConsultationOptions = (doctor) => {
       name: 'Video Consultation',
       fee,
       currency,
-      hours: '04:30 PM - 09:30 PM',
-      status: 'Online',
+      hours: '9:00 AM - 9:00 PM',
+      status: 'Available',
     },
   ];
 
@@ -54,65 +74,64 @@ const buildConsultationOptions = (doctor) => {
       type: 'clinic',
       name: `${doctor.city} Clinic`,
       location: doctor.city,
-      fee,
+      fee: fee + 500,
       currency,
-      hours: '10:00 AM - 07:00 PM',
-      status: 'In Clinic',
+      hours: '10:00 AM - 7:00 PM',
+      status: 'Available',
     });
   }
 
   return options;
 };
 
-const toDoctorSearchResult = (doctor, specialty = null) => {
-  const user = doctor.userId?.firstName ? doctor.userId : null;
-  const userId = user?._id?.toString() || doctor.userId?.toString();
-  const { firstName, lastName } = user
-    ? { firstName: user.firstName, lastName: user.lastName }
-    : splitFullName(doctor.fullName);
-  const specialtyChip = toSpecialtyChip(specialty);
+const toDoctorSearchResult = (doctor) => {
+  const userId = doctor.userId?._id?.toString() || doctor.userId?.toString();
+  const specialties = (doctor.specialtyIds || []).map(toSpecialtyResponse).filter(Boolean);
+  const languages = (doctor.languageIds || []).map(toLanguageResponse).filter(Boolean);
 
   return {
     id: doctor._id.toString(),
     userId,
-    user: { id: userId, firstName, lastName },
+    user: toUserSummary(doctor),
+    gender: doctor.gender,
     city: doctor.city,
-    country: 'Pakistan',
+    country: doctor.country || 'Pakistan',
     title: doctor.title || '',
-    yearsOfExperience: doctor.yearsOfExperience ?? 10,
-    consultationFee: doctor.consultationFee ?? 1500,
+    yearsOfExperience: doctor.yearsOfExperience ?? 0,
+    consultationFee: doctor.consultationFee ?? 0,
     currency: doctor.currency || 'PKR',
-    averageRating: doctor.averageRating ?? 0,
-    reviewCount: doctor.reviewCount ?? 0,
+    profileImageUrl: doctor.profileImageUrl || '',
     about: doctor.about || '',
-    qualifications: doctor.qualifications || [],
-    specialtyIds: specialtyChip ? [specialtyChip.id] : [],
-    specialties: specialtyChip ? [specialtyChip] : [],
-    languageIds: [],
-    languages: [],
+    qualifications: (doctor.qualifications || []).map(toQualificationResponse),
+    specialtyIds: specialties.map((item) => item.id),
+    specialties,
+    languageIds: languages.map((item) => item.id),
+    languages,
     clinics: doctor.city
       ? [{ id: `${doctor._id.toString()}-clinic`, name: `${doctor.city} Clinic`, city: doctor.city }]
       : [],
     availableDays: [1, 2, 3, 4, 5],
+    averageRating: doctor.averageRating ?? 0,
+    reviewCount: doctor.reviewCount ?? 0,
   };
 };
 
-const toDoctorDetailProfile = (doctor, specialty = null) => {
-  const base = toDoctorSearchResult(doctor, specialty);
-  const rating = doctor.averageRating || 0;
+const toDoctorDetailProfile = (doctor) => {
+  const base = toDoctorSearchResult(doctor);
+  const rating = doctor.averageRating ?? 0;
 
   return {
     ...base,
     role: doctor.title || 'Consultant',
     averageRating: rating,
-    reviewCount: doctor.reviewCount || 0,
-    waitTimeMins: 10,
-    avgTimeToPatientMins: 25,
+    reviewCount: doctor.reviewCount ?? 0,
+    waitTimeMins: 10 + ((doctor._id.toString().charCodeAt(0) ?? 3) % 4) * 5,
+    avgTimeToPatientMins: 12,
     ratingBreakdown: {
-      patientSatisfaction: rating || 4.5,
-      diagnosis: rating || 4.5,
-      staffBehaviour: rating || 4.5,
-      clinicEnvironment: rating || 4.5,
+      patientSatisfaction: rating,
+      diagnosis: Math.max(0, rating - 0.1),
+      staffBehaviour: Math.min(5, rating + 0.1),
+      clinicEnvironment: rating,
     },
     reviews: [],
     consultationOptions: buildConsultationOptions(doctor),
@@ -122,7 +141,6 @@ const toDoctorDetailProfile = (doctor, specialty = null) => {
 
 module.exports = {
   DEFAULT_TIME_SLOTS,
-  matchSpecialtyForDoctor,
   toDoctorSearchResult,
   toDoctorDetailProfile,
 };

@@ -6,35 +6,34 @@ const userPopulate = {
   path: 'userId',
   select: 'firstName lastName email phone isActive isEmailVerified role createdAt',
 };
-const specialtyPopulate = { path: 'specialtyIds', select: 'name slug description isActive' };
-const languagePopulate = { path: 'languageIds', select: 'name code isActive' };
+const specialtyPopulate = {
+  path: 'specialtyIds',
+  select: 'name slug description icon isActive',
+};
+const languagePopulate = {
+  path: 'languageIds',
+  select: 'name code isActive',
+};
 
-const findById = (id) =>
-  Doctor.findById(id).populate(userPopulate).populate(specialtyPopulate).populate(languagePopulate);
+const withPopulates = (query) =>
+  query.populate(userPopulate).populate(specialtyPopulate).populate(languagePopulate);
 
-const findByUserId = (userId) =>
-  Doctor.findOne({ userId })
-    .populate(userPopulate)
-    .populate(specialtyPopulate)
-    .populate(languagePopulate);
+const findById = (id) => withPopulates(Doctor.findById(id));
+
+const findByUserId = (userId) => withPopulates(Doctor.findOne({ userId }));
 
 const findUserById = (id) => usersRepository.findById(id);
 
 const create = (data) => Doctor.create(data);
 
 const updateById = (id, data) =>
-  Doctor.findByIdAndUpdate(id, data, { new: true, runValidators: true })
-    .populate(userPopulate)
-    .populate(specialtyPopulate)
-    .populate(languagePopulate);
+  withPopulates(Doctor.findByIdAndUpdate(id, data, { new: true, runValidators: true }));
 
 const updateByUserId = (userId, data) =>
-  Doctor.findOneAndUpdate({ userId }, data, { new: true, runValidators: true })
-    .populate(userPopulate)
-    .populate(specialtyPopulate)
-    .populate(languagePopulate);
+  withPopulates(Doctor.findOneAndUpdate({ userId }, data, { new: true, runValidators: true }));
 
-const updateVerificationStatus = (id, data) => updateById(id, data);
+const updateVerificationStatus = (id, data) =>
+  withPopulates(Doctor.findByIdAndUpdate(id, data, { new: true, runValidators: true }));
 
 const deleteById = (id) => Doctor.findByIdAndDelete(id);
 
@@ -45,51 +44,37 @@ const updateRatingStats = (doctorId, { averageRating, reviewCount }) =>
     { new: true, runValidators: true },
   );
 
-const isValidObjectId = (value) => mongoose.Types.ObjectId.isValid(value);
+const searchPublic = ({ filter, sort, skip, limit }) =>
+  Promise.all([
+    withPopulates(Doctor.find(filter)).sort(sort).skip(skip).limit(limit).lean(),
+    Doctor.countDocuments(filter),
+  ]);
 
 const findVerifiedById = (id) =>
-  Doctor.findOne({ _id: id, verificationStatus: 'VERIFIED', isActive: true })
-    .populate(userPopulate)
-    .populate(specialtyPopulate)
-    .populate(languagePopulate);
+  withPopulates(
+    Doctor.findOne({ _id: id, verificationStatus: 'VERIFIED', isActive: true }),
+  ).lean();
 
-const searchVerified = (filter, { skip, limit, sort }) =>
-  Doctor.find({ ...filter, verificationStatus: 'VERIFIED', isActive: true })
-    .populate(userPopulate)
-    .populate(specialtyPopulate)
-    .populate(languagePopulate)
-    .sort(sort)
-    .skip(skip)
-    .limit(limit);
+const searchAdmin = ({ filter, sort, skip, limit }) =>
+  Promise.all([
+    withPopulates(Doctor.find(filter)).sort(sort).skip(skip).limit(limit),
+    Doctor.countDocuments(filter),
+  ]);
 
-const countVerified = (filter) =>
-  Doctor.countDocuments({ ...filter, verificationStatus: 'VERIFIED', isActive: true });
-
-const searchAdmin = (filter, { skip, limit, sort }) =>
-  Doctor.find(filter)
-    .populate(userPopulate)
-    .populate(specialtyPopulate)
-    .populate(languagePopulate)
-    .sort(sort)
-    .skip(skip)
-    .limit(limit);
-
-const countAdmin = (filter) => Doctor.countDocuments(filter);
+const isValidObjectId = (value) => mongoose.Types.ObjectId.isValid(value);
 
 module.exports = {
   findById,
   findByUserId,
   findUserById,
-  findVerifiedById,
   create,
   updateById,
   updateByUserId,
   updateVerificationStatus,
   deleteById,
   updateRatingStats,
-  searchVerified,
-  countVerified,
+  searchPublic,
+  findVerifiedById,
   searchAdmin,
-  countAdmin,
   isValidObjectId,
 };

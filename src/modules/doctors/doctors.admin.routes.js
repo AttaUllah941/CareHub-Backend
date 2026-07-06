@@ -1,19 +1,24 @@
-const express = require('express');
+const { Router } = require('express');
 const doctorsController = require('./doctors.controller');
 const { verificationSchema } = require('./doctors.validator');
-const { validateBody } = require('../../shared/middleware/validate.middleware');
-const { authenticate } = require('../../shared/middleware/auth.middleware');
-const { authorize } = require('../../shared/middleware/role.middleware');
+const { validate, validateRequest } = require('../../shared/middleware/validate.middleware');
+const { authenticate, authorize } = require('../../core/middleware/auth.middleware');
+const { UserRole } = require('../../shared/enums/userRole.enum');
+const { objectIdSchema } = require('../../shared/utils/zodSchemas');
+const { z } = require('zod');
 
-const router = express.Router();
+const router = Router();
 
-router.get('/', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), doctorsController.listAdmin);
+router.use(authenticate, authorize(UserRole.ADMIN, UserRole.SUPER_ADMIN));
+
+router.get('/', doctorsController.listAdmin);
 
 router.patch(
   '/:id/verification',
-  authenticate,
-  authorize('ADMIN', 'SUPER_ADMIN'),
-  validateBody(verificationSchema),
+  validateRequest({
+    params: z.object({ id: objectIdSchema('id') }),
+    body: verificationSchema,
+  }),
   doctorsController.updateVerification,
 );
 

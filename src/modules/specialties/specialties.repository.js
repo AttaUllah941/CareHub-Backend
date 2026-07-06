@@ -1,23 +1,42 @@
 const { Specialty } = require('./specialties.model');
 
-const findActive = (search) => {
+const findAllActive = (search) => {
   const filter = { isActive: true };
 
   if (search) {
-    const escaped = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const pattern = new RegExp(escaped, 'i');
-    filter.$or = [{ name: pattern }, { slug: pattern }, { description: pattern }];
+    const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(escaped, 'i');
+    filter.$or = [{ name: regex }, { slug: regex }, { description: regex }];
   }
 
   return Specialty.find(filter).sort({ sortOrder: 1, name: 1 });
 };
 
-const findActiveBySlug = (slug) =>
-  Specialty.findOne({ slug: slug.toLowerCase(), isActive: true });
-
 const findById = (id) => Specialty.findById(id);
 
 const findBySlug = (slug) => Specialty.findOne({ slug: slug.toLowerCase() });
+
+const findActiveBySlug = (slug) =>
+  Specialty.findOne({ slug: slug.toLowerCase(), isActive: true });
+
+const findAll = ({ page, limit, skip, sort, search, isActive }) => {
+  const filter = {};
+
+  if (isActive !== undefined) {
+    filter.isActive = isActive;
+  }
+
+  if (search) {
+    const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(escaped, 'i');
+    filter.$or = [{ name: regex }, { slug: regex }, { description: regex }];
+  }
+
+  return Promise.all([
+    Specialty.find(filter).sort(sort).skip(skip).limit(limit),
+    Specialty.countDocuments(filter),
+  ]);
+};
 
 const create = (data) => Specialty.create(data);
 
@@ -25,13 +44,14 @@ const updateById = (id, data) =>
   Specialty.findByIdAndUpdate(id, data, { new: true, runValidators: true });
 
 const softDeleteById = (id) =>
-  Specialty.findByIdAndUpdate(id, { isActive: false }, { new: true });
+  Specialty.findByIdAndUpdate(id, { isActive: false }, { new: true, runValidators: true });
 
 module.exports = {
-  findActive,
-  findActiveBySlug,
+  findAllActive,
   findById,
   findBySlug,
+  findActiveBySlug,
+  findAll,
   create,
   updateById,
   softDeleteById,

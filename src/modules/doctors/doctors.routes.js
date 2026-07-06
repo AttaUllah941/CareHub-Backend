@@ -1,6 +1,9 @@
 const { Router } = require('express');
 const doctorsController = require('./doctors.controller');
-const { searchPublicQuerySchema, publicDoctorIdParamsSchema } = require('./doctors.validator');
+const {
+  searchPublicQuerySchema,
+  publicDoctorIdParamsSchema,
+} = require('./doctors.validator');
 const { validate } = require('../../shared/middleware/validate.middleware');
 
 const router = Router();
