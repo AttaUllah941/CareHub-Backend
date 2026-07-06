@@ -52,7 +52,11 @@ const validateRequest =
     return next();
   };
 
+/** @deprecated Prefer validate(schema, 'body') — kept for legacy route modules */
+const validateBody = (schema) => validate(schema, 'body');
+
 module.exports = {
   validate,
+  validateBody,
   validateRequest,
 };

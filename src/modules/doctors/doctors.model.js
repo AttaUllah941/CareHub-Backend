@@ -1,11 +1,13 @@
 const mongoose = require('mongoose');
 
+const GENDERS = ['male', 'female', 'other'];
+const VERIFICATION_STATUSES = ['PENDING', 'VERIFIED', 'REJECTED'];
+
 const qualificationSchema = new mongoose.Schema(
   {
-    degree: { type: String, trim: true, required: true },
-    institution: { type: String, trim: true, default: '' },
+    degree: { type: String, trim: true },
+    institute: { type: String, trim: true },
     year: { type: Number },
-    certificateUrl: { type: String, trim: true, default: '' },
   },
   { _id: false },
 );
@@ -19,25 +21,29 @@ const doctorSchema = new mongoose.Schema(
       unique: true,
     },
     fullName: { type: String, required: true, trim: true },
-    gender: { type: String, enum: ['MALE', 'FEMALE', 'OTHER'], default: 'MALE' },
     city: { type: String, trim: true, default: '' },
-    country: { type: String, trim: true, default: 'Pakistan' },
     title: { type: String, trim: true, default: '' },
+    gender: { type: String, enum: GENDERS },
+    bio: { type: String, trim: true, default: '' },
     about: { type: String, trim: true, default: '' },
-    yearsOfExperience: { type: Number, default: 0, min: 0 },
-    consultationFee: { type: Number, default: 0, min: 0 },
+    yearsOfExperience: { type: Number, min: 0, default: 0 },
+    consultationFee: { type: Number, min: 0, default: 0 },
     currency: { type: String, trim: true, default: 'PKR' },
-    profileImageUrl: { type: String, trim: true, default: '' },
+    qualifications: { type: [qualificationSchema], default: [] },
     specialtyIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Specialty' }],
     languageIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Language' }],
-    qualifications: { type: [qualificationSchema], default: [] },
+    profileImageUrl: { type: String, trim: true },
+    licenseNumber: { type: String, trim: true },
+    licenseAuthority: { type: String, trim: true },
+    medicalRegistrationNumber: { type: String, trim: true },
     averageRating: { type: Number, default: 0, min: 0, max: 5 },
     reviewCount: { type: Number, default: 0, min: 0 },
     verificationStatus: {
       type: String,
-      enum: ['PENDING', 'VERIFIED', 'REJECTED'],
+      enum: VERIFICATION_STATUSES,
       default: 'PENDING',
     },
+    rejectionReason: { type: String, trim: true, default: '' },
     isActive: { type: Boolean, default: true, index: true },
   },
   { timestamps: true },
@@ -50,4 +56,4 @@ doctorSchema.index({ consultationFee: 1 });
 
 const Doctor = mongoose.models.Doctor || mongoose.model('Doctor', doctorSchema);
 
-module.exports = { Doctor };
+module.exports = { Doctor, GENDERS, VERIFICATION_STATUSES };

@@ -5,26 +5,12 @@ const { validate } = require('../../shared/middleware/validate.middleware');
 
 const router = Router();
 
-/**
- * @openapi
- * /doctors/public/search:
- *   get:
- *     tags: [Doctors]
- *     summary: Search verified doctors
- */
 router.get(
   '/public/search',
   validate(searchPublicQuerySchema, 'query'),
   doctorsController.searchPublic,
 );
 
-/**
- * @openapi
- * /doctors/public/{id}:
- *   get:
- *     tags: [Doctors]
- *     summary: Get verified doctor public profile
- */
 router.get(
   '/public/:id',
   validate(publicDoctorIdParamsSchema, 'params'),

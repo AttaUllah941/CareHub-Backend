@@ -17,9 +17,16 @@ const medicinesAdminRoutes = require('../modules/medicines/medicines.admin.route
 const adminRoutes = require('../modules/admin/admin.routes');
 const authRoutes = require('../modules/auth/auth.routes');
 const doctorsPublicRoutes = require('../modules/doctors/doctors.routes');
+const doctorsPortalRoutes = require('../modules/doctors/doctors.portal.routes');
+const schedulesRoutes = require('../modules/schedules/schedules.routes');
+const clinicsRoutes = require('../modules/clinics/clinics.routes');
 const notificationsRoutes = require('../modules/notifications/notifications.routes');
 const appointmentsRoutes = require('../modules/appointments/appointments.routes');
+const appointmentsDoctorRoutes = require('../modules/appointments/appointments.doctor.routes');
+const prescriptionsDoctorRoutes = require('../modules/prescriptions/prescriptions.doctor.routes');
+const prescriptionsRoutes = require('../modules/prescriptions/prescriptions.routes');
 const specialtiesRoutes = require('../modules/specialties/specialties.routes');
+const languagesRoutes = require('../modules/languages/languages.routes');
 
 const router = Router();
 
@@ -35,6 +42,9 @@ router.get('/', (_req, res) => {
     modules: {
       implemented: [
         'auth',
+        'doctors',
+        'specialties',
+        'languages',
         'reviews',
         'uploads',
         'doctor-applications',
@@ -45,21 +55,32 @@ router.get('/', (_req, res) => {
         'admin',
         'notifications',
         'appointments',
-        'medical-specialties',
+        'schedules',
+        'clinics',
+        'prescriptions',
       ],
-      planned: ['users', 'languages', 'doctors'],
+      planned: ['users'],
     },
   }, 'CareHub API is ready');
 });
 
 router.use('/medical-specialties', specialtiesRoutes);
 router.use('/doctors', reviewsDoctorRoutes);
+router.use('/doctors', doctorsPortalRoutes);
 router.use('/doctors', doctorsPublicRoutes);
+router.use('/schedules', schedulesRoutes);
+router.use('/clinics', clinicsRoutes);
 router.use('/reviews', reviewsRoutes);
 router.use('/auth', authRoutes);
 router.use('/uploads', uploadsRoutes);
 router.use('/notifications', notificationsRoutes);
 router.use('/', appointmentsRoutes);
+router.use('/doctor/appointments', appointmentsDoctorRoutes);
+router.use('/prescriptions', prescriptionsRoutes);
+router.use('/doctor/prescriptions', prescriptionsDoctorRoutes);
+router.use('/specialties', specialtiesRoutes);
+router.use('/medical-specialties', specialtiesRoutes);
+router.use('/languages', languagesRoutes);
 router.use('/doctor-applications', doctorApplicationsRoutes);
 router.use('/admin/doctor-applications', doctorApplicationsAdminRoutes);
 router.use('/hospitals', hospitalsRoutes);

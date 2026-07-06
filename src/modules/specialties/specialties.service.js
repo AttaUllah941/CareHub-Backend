@@ -1,82 +1,107 @@
-const { NotFoundError, ConflictError } = require('../../core/errors/AppError');
+const AppError = require('../../shared/errors/AppError');
+const { slugify } = require('../../shared/utils/slugify');
 const specialtiesRepository = require('./specialties.repository');
 
 const toSpecialtyResponse = (specialty) => ({
   id: specialty._id.toString(),
   name: specialty.name,
   slug: specialty.slug,
-  description: specialty.description || '',
-  icon: specialty.icon || '',
+  description: specialty.description,
+  icon: specialty.icon,
   isActive: specialty.isActive,
   createdAt: specialty.createdAt?.toISOString(),
   updatedAt: specialty.updatedAt?.toISOString(),
 });
 
-const listPublicSpecialties = async () => {
-  const specialties = await specialtiesRepository.findAllActive();
-  return { specialties: specialties.map(toSpecialtyResponse) };
+const resolveSlug = (name, slug) => {
+  const value = slug ? slugify(slug) : slugify(name);
+
+  if (!value) {
+    throw new AppError('Unable to generate a valid slug', 422);
+  }
+
+  return value;
 };
 
-const getSpecialtyById = async (id) => {
-  const specialty = await specialtiesRepository.findById(id);
-  if (!specialty || !specialty.isActive) {
-    throw new NotFoundError('Medical specialty not found');
+const listPublic = async (search) => {
+  const specialties = await specialtiesRepository.findActive(search);
+  return {
+    specialties: specialties.map(toSpecialtyResponse),
+  };
+};
+
+const getPublicBySlug = async (slug) => {
+  const specialty = await specialtiesRepository.findActiveBySlug(slug);
+
+  if (!specialty) {
+    throw new AppError('Medical specialty not found', 404);
   }
+
   return { specialty: toSpecialtyResponse(specialty) };
 };
 
-const getSpecialtyBySlug = async (slug) => {
-  const specialty = await specialtiesRepository.findBySlug(slug);
-  if (!specialty || !specialty.isActive) {
-    throw new NotFoundError('Medical specialty not found');
-  }
-  return { specialty: toSpecialtyResponse(specialty) };
-};
+const create = async (payload) => {
+  const slug = resolveSlug(payload.name, payload.slug);
 
-const createSpecialty = async (data) => {
-  const slug = data.slug.toLowerCase();
   const existing = await specialtiesRepository.findBySlug(slug);
   if (existing) {
-    throw new ConflictError('Specialty slug already exists');
+    throw new AppError('Slug already exists', 409);
   }
 
-  const specialty = await specialtiesRepository.create({ ...data, slug });
+  const specialty = await specialtiesRepository.create({
+    name: payload.name,
+    slug,
+    description: payload.description,
+    icon: payload.icon,
+    isActive: true,
+  });
+
   return { specialty: toSpecialtyResponse(specialty) };
 };
 
-const updateSpecialty = async (id, data) => {
+const update = async (id, payload) => {
   const specialty = await specialtiesRepository.findById(id);
+
   if (!specialty) {
-    throw new NotFoundError('Medical specialty not found');
+    throw new AppError('Medical specialty not found', 404);
   }
 
-  if (data.slug && data.slug.toLowerCase() !== specialty.slug) {
-    const existing = await specialtiesRepository.findBySlug(data.slug);
-    if (existing) {
-      throw new ConflictError('Specialty slug already exists');
+  const updates = { ...payload };
+
+  if (payload.slug !== undefined) {
+    updates.slug = resolveSlug(payload.name || specialty.name, payload.slug);
+
+    if (updates.slug !== specialty.slug) {
+      const existing = await specialtiesRepository.findBySlug(updates.slug);
+      if (existing && existing._id.toString() !== id) {
+        throw new AppError('Slug already exists', 409);
+      }
     }
-    data.slug = data.slug.toLowerCase();
   }
 
-  const updated = await specialtiesRepository.updateById(id, data);
+  const updated = await specialtiesRepository.updateById(id, updates);
   return { specialty: toSpecialtyResponse(updated) };
 };
 
-const deleteSpecialty = async (id) => {
+const remove = async (id) => {
   const specialty = await specialtiesRepository.findById(id);
+
   if (!specialty) {
-    throw new NotFoundError('Medical specialty not found');
+    throw new AppError('Medical specialty not found', 404);
   }
 
-  await specialtiesRepository.softDeleteById(id);
-  return { message: 'Medical specialty deactivated successfully' };
+  if (!specialty.isActive) {
+    throw new AppError('Medical specialty is already inactive', 400);
+  }
+
+  const updated = await specialtiesRepository.softDeleteById(id);
+  return { specialty: toSpecialtyResponse(updated) };
 };
 
 module.exports = {
-  listPublicSpecialties,
-  getSpecialtyById,
-  getSpecialtyBySlug,
-  createSpecialty,
-  updateSpecialty,
-  deleteSpecialty,
+  listPublic,
+  getPublicBySlug,
+  create,
+  update,
+  remove,
 };

@@ -25,14 +25,26 @@ const resetPasswordSchema = z.object({
   password: z.string().min(8).max(128),
 });
 
-const refreshSchema = z.object({
+const refreshTokenSchema = z.object({
   refreshToken: z.string().trim().min(1),
 });
+
+const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1).max(128),
+    newPassword: z.string().min(8).max(128),
+    confirmPassword: z.string().min(8).max(128),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  });
 
 module.exports = {
   registerSchema,
   loginSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
-  refreshSchema,
+  refreshTokenSchema,
+  changePasswordSchema,
 };

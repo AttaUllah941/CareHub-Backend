@@ -1,19 +1,30 @@
 const { Router } = require('express');
 const asyncHandler = require('../../core/utils/asyncHandler');
-const { authenticate, authorize } = require('../../core/middleware/auth.middleware');
+const { authenticate, authorize, optionalAuthenticate } = require('../../core/middleware/auth.middleware');
 const { validate } = require('../../shared/middleware/validate.middleware');
 const { UserRole } = require('../../shared/enums/userRole.enum');
 const appointmentsController = require('./appointments.controller');
-const { appointmentIdParamsSchema } = require('./appointments.validator');
+const {
+  appointmentIdParamsSchema,
+  createAppointmentSchema,
+  listAppointmentsQuerySchema,
+} = require('./appointments.validator');
 
 const router = Router();
 
-router.patch(
-  '/doctor/appointments/:id/confirm',
+router.post(
+  '/appointments',
+  optionalAuthenticate,
+  validate(createAppointmentSchema),
+  asyncHandler(appointmentsController.create),
+);
+
+router.get(
+  '/appointments/me',
   authenticate,
-  authorize(UserRole.DOCTOR),
-  validate(appointmentIdParamsSchema, 'params'),
-  asyncHandler(appointmentsController.confirm),
+  authorize(UserRole.PATIENT),
+  validate(listAppointmentsQuerySchema, 'query'),
+  asyncHandler(appointmentsController.listMine),
 );
 
 router.patch(

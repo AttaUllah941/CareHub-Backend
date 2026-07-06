@@ -271,8 +271,8 @@ const seed = async () => {
           specialtyIds: specialty ? [specialty._id] : [],
           languageIds: [english?._id, urdu?._id].filter(Boolean),
           qualifications: [
-            { degree: 'MBBS', institution: 'King Edward Medical University', year: 2010 },
-            { degree: 'FCPS', institution: 'College of Physicians and Surgeons Pakistan', year: 2015 },
+            { degree: 'MBBS', institute: 'King Edward Medical University', year: 2010 },
+            { degree: 'FCPS', institute: 'College of Physicians and Surgeons Pakistan', year: 2015 },
           ],
           verificationStatus: 'VERIFIED',
           isActive: true,
