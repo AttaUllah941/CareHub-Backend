@@ -19,6 +19,7 @@ const authRoutes = require('../modules/auth/auth.routes');
 const doctorsPublicRoutes = require('../modules/doctors/doctors.routes');
 const notificationsRoutes = require('../modules/notifications/notifications.routes');
 const appointmentsRoutes = require('../modules/appointments/appointments.routes');
+const specialtiesRoutes = require('../modules/specialties/specialties.routes');
 
 const router = Router();
 
@@ -44,12 +45,14 @@ router.get('/', (_req, res) => {
         'admin',
         'notifications',
         'appointments',
+        'medical-specialties',
       ],
-      planned: ['users', 'specialties', 'languages', 'doctors'],
+      planned: ['users', 'languages', 'doctors'],
     },
   }, 'CareHub API is ready');
 });
 
+router.use('/medical-specialties', specialtiesRoutes);
 router.use('/doctors', reviewsDoctorRoutes);
 router.use('/doctors', doctorsPublicRoutes);
 router.use('/reviews', reviewsRoutes);

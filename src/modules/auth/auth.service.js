@@ -7,7 +7,7 @@ const {
   UnauthorizedError,
 } = require('../../core/errors/AppError');
 const config = require('../../config');
-const { generateTokens } = require('../../core/utils/token.utils');
+const { generateTokens, verifyRefreshToken } = require('../../core/utils/token.utils');
 const { PUBLIC_REGISTRATION_ROLES } = require('../../shared/enums/userRole.enum');
 const usersRepository = require('../users/users.repository');
 const authRepository = require('./auth.repository');
@@ -59,12 +59,7 @@ const register = async (payload) => {
     firstName: user.firstName,
   });
 
-  const tokens = generateTokens(user._id.toString(), user.role);
-
-  return {
-    user: toUserResponse(user),
-    tokens,
-  };
+  return buildAuthResponse(user);
 };
 
 const login = async ({ email, password }) => {
@@ -82,11 +77,40 @@ const login = async ({ email, password }) => {
     throw new UnauthorizedError('Invalid email or password');
   }
 
+  return buildAuthResponse(user);
+};
+
+const refresh = async ({ refreshToken }) => {
+  if (!refreshToken) {
+    throw new UnauthorizedError('Refresh token is required');
+  }
+
+  let decoded;
+  try {
+    decoded = verifyRefreshToken(refreshToken);
+  } catch {
+    throw new UnauthorizedError('Invalid or expired refresh token');
+  }
+
+  const user = await usersRepository.findById(decoded.sub);
+  if (!user) {
+    throw new UnauthorizedError('Invalid or expired refresh token');
+  }
+
+  if (!user.isActive) {
+    throw new UnauthorizedError('Account is inactive');
+  }
+
+  return buildAuthResponse(user);
+};
+
+const buildAuthResponse = (user) => {
   const tokens = generateTokens(user._id.toString(), user.role);
 
   return {
     user: toUserResponse(user),
-    tokens,
+    accessToken: tokens.accessToken,
+    refreshToken: tokens.refreshToken,
   };
 };
 
@@ -142,8 +166,10 @@ const resetPassword = async ({ token, password }) => {
 module.exports = {
   register,
   login,
+  refresh,
   getMe,
   requestPasswordReset,
   resetPassword,
   toUserResponse,
+  buildAuthResponse,
 };

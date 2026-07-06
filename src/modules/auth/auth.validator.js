@@ -25,9 +25,14 @@ const resetPasswordSchema = z.object({
   password: z.string().min(8).max(128),
 });
 
+const refreshSchema = z.object({
+  refreshToken: z.string().trim().min(1),
+});
+
 module.exports = {
   registerSchema,
   loginSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
+  refreshSchema,
 };

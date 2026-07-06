@@ -9,6 +9,7 @@ const {
   loginSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
+  refreshSchema,
 } = require('./auth.validator');
 
 const router = Router();
@@ -39,6 +40,13 @@ router.post(
   authLimiter,
   validate(loginSchema),
   asyncHandler(authController.login),
+);
+
+router.post(
+  '/refresh',
+  authLimiter,
+  validate(refreshSchema),
+  asyncHandler(authController.refresh),
 );
 
 /**

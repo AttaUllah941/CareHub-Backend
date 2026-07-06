@@ -25,9 +25,15 @@ const resetPassword = async (req, res) => {
   res.json({ success: true, message: result.message, data: result });
 };
 
+const refresh = async (req, res) => {
+  const result = await authService.refresh(req.body);
+  res.json({ success: true, message: 'Token refreshed', data: result });
+};
+
 module.exports = {
   register,
   login,
+  refresh,
   getMe,
   requestPasswordReset,
   resetPassword,
