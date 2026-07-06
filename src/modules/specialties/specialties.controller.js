@@ -1,4 +1,3 @@
-const { HttpStatus } = require('../../shared/constants/httpStatus.constants');
 const { successResponse } = require('../../core/utils/apiResponse');
 const asyncHandler = require('../../core/utils/asyncHandler');
 const specialtiesService = require('./specialties.service');
@@ -23,7 +22,7 @@ const getPublicBySlug = asyncHandler(async (req, res) => {
 
 const create = asyncHandler(async (req, res) => {
   const data = await specialtiesService.create(req.body);
-  successResponse(res, data, 'Medical specialty created', HttpStatus.CREATED);
+  successResponse(res, data, 'Medical specialty created', 201);
 });
 
 const update = asyncHandler(async (req, res) => {

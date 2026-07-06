@@ -1,16 +1,24 @@
-const AppError = require('../../shared/errors/AppError');
-const { parsePaginationQuery, buildPaginationMeta } = require('../../shared/utils/pagination');
+const {
+  NotFoundError,
+  ForbiddenError,
+  BadRequestError,
+} = require('../../core/errors/AppError');
+const { parsePaginationQuery, buildPaginationMeta } = require('../../core/utils/pagination.util');
 const { Specialty } = require('../specialties/specialties.model');
 const { User } = require('../users/users.model');
 const doctorsRepository = require('./doctors.repository');
+const {
+  toDoctorSearchResult,
+  toDoctorDetailProfile,
+} = require('./doctors.public.mapper');
 
 const PUBLIC_SORT_FIELDS = [
   'yearsOfExperience',
-  'consultationFee',
   'averageRating',
+  'consultationFee',
   'reviewCount',
-  'createdAt',
   'fullName',
+  'createdAt',
 ];
 
 const ADMIN_SORT_FIELDS = [
@@ -20,8 +28,6 @@ const ADMIN_SORT_FIELDS = [
   'verificationStatus',
   'fullName',
 ];
-
-const DEFAULT_TIME_SLOTS = ['04:30 PM', '05:00 PM', '05:30 PM', '06:00 PM', '06:30 PM', '07:00 PM'];
 
 const LEGACY_SPECIALTY_SLUG_MAP = {
   cardiology: 'cardiologist',
@@ -33,33 +39,15 @@ const LEGACY_SPECIALTY_SLUG_MAP = {
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-const toSpecialtyResponse = (specialty) => {
-  if (!specialty) return null;
-  const id = specialty._id ? specialty._id.toString() : specialty.id;
-  return {
-    id,
-    name: specialty.name,
-    slug: specialty.slug,
-    description: specialty.description,
-    icon: specialty.icon || '',
-    isActive: specialty.isActive,
-  };
-};
-
-const toLanguageResponse = (language) => {
-  if (!language) return null;
-  const id = language._id ? language._id.toString() : language.id;
-  return {
-    id,
-    name: language.name,
-    code: language.code,
-    isActive: language.isActive,
-  };
+const resolveSpecialtySlug = (slug) => {
+  if (!slug) return '';
+  const normalized = slug.trim().toLowerCase();
+  return LEGACY_SPECIALTY_SLUG_MAP[normalized] ?? normalized;
 };
 
 const toQualificationResponse = (qualification) => ({
-  degree: qualification.degree,
-  institution: qualification.institute || qualification.institution || '',
+  degree: qualification.degree || '',
+  institution: qualification.institution || qualification.institute || '',
   year: qualification.year,
 });
 
@@ -71,179 +59,90 @@ const toWorkHistoryResponse = (entry) => ({
   isCurrent: entry.to == null,
 });
 
-const toUserSummary = (user) => {
-  if (!user) return undefined;
+const toPortalUser = (user) => {
+  if (!user?.firstName) return undefined;
+
   return {
     id: user._id.toString(),
     firstName: user.firstName,
     lastName: user.lastName,
     email: user.email,
     phone: user.phone,
-    isActive: user.isActive,
-    isEmailVerified: user.isEmailVerified,
-    role: user.role,
-    createdAt: user.createdAt?.toISOString(),
-  };
-};
-
-const buildConsultationOptions = (doctor) => {
-  const fee = doctor.consultationFee ?? 0;
-  const currency = doctor.currency || 'PKR';
-  const doctorId = doctor._id.toString();
-
-  const options = [
-    {
-      id: `${doctorId}-video`,
-      type: 'video',
-      name: 'Video Consultation',
-      fee,
-      currency,
-      hours: '04:30 PM - 09:30 PM',
-      status: 'Online',
-    },
-  ];
-
-  if (doctor.city) {
-    options.push({
-      id: `${doctorId}-clinic`,
-      type: 'clinic',
-      name: `${doctor.city} Clinic`,
-      location: doctor.city,
-      fee,
-      currency,
-      hours: '10:00 AM - 07:00 PM',
-      status: 'In Clinic',
-    });
-  }
-
-  return options;
-};
-
-const toDoctorSearchResult = (doctor) => ({
-  id: doctor._id.toString(),
-  userId: doctor.userId?._id?.toString() || doctor.userId?.toString(),
-  user: doctor.userId?.firstName
-    ? {
-        id: doctor.userId._id.toString(),
-        firstName: doctor.userId.firstName,
-        lastName: doctor.userId.lastName,
-      }
-    : undefined,
-  gender: doctor.gender,
-  city: doctor.city,
-  country: 'Pakistan',
-  title: doctor.title,
-  yearsOfExperience: doctor.yearsOfExperience,
-  consultationFee: doctor.consultationFee,
-  currency: doctor.currency,
-  profileImageUrl: doctor.profileImageUrl,
-  about: doctor.about,
-  qualifications: (doctor.qualifications || []).map(toQualificationResponse),
-  specialtyIds: (doctor.specialtyIds || []).map((s) =>
-    s?._id ? s._id.toString() : s?.toString(),
-  ),
-  specialties: (doctor.specialtyIds || []).map(toSpecialtyResponse).filter(Boolean),
-  languageIds: (doctor.languageIds || []).map((l) => (l?._id ? l._id.toString() : l?.toString())),
-  languages: (doctor.languageIds || []).map(toLanguageResponse).filter(Boolean),
-  clinics: doctor.city
-    ? [{ id: `${doctor._id.toString()}-clinic`, name: `${doctor.city} Clinic`, city: doctor.city }]
-    : [],
-  availableDays: [1, 2, 3, 4, 5],
-  averageRating: doctor.averageRating ?? 0,
-  reviewCount: doctor.reviewCount ?? 0,
-});
-
-const toDoctorDetailProfile = (doctor) => {
-  const base = toDoctorSearchResult(doctor);
-  const rating = doctor.averageRating || 0;
-
-  return {
-    ...base,
-    role: doctor.title ? `${doctor.title}` : 'Consultant',
-    averageRating: rating,
-    reviewCount: doctor.reviewCount || 0,
-    waitTimeMins: 10,
-    avgTimeToPatientMins: 25,
-    ratingBreakdown: {
-      patientSatisfaction: rating || 4.5,
-      diagnosis: rating || 4.5,
-      staffBehaviour: rating || 4.5,
-      clinicEnvironment: rating || 4.5,
-    },
-    reviews: [],
-    consultationOptions: buildConsultationOptions(doctor),
-    timeSlots: DEFAULT_TIME_SLOTS,
   };
 };
 
 const toDoctorProfile = (doctor) => ({
   id: doctor._id.toString(),
   userId: doctor.userId?._id?.toString() || doctor.userId?.toString(),
-  user: toUserSummary(doctor.userId),
-  title: doctor.title,
+  user: toPortalUser(doctor.userId),
+  title: doctor.title || '',
   gender: doctor.gender,
   dateOfBirth: doctor.dateOfBirth?.toISOString(),
-  city: doctor.city,
-  bio: doctor.bio,
-  about: doctor.about,
-  yearsOfExperience: doctor.yearsOfExperience,
-  licenseNumber: doctor.licenseNumber,
-  licenseAuthority: doctor.licenseAuthority,
-  medicalRegistrationNumber: doctor.medicalRegistrationNumber,
+  city: doctor.city || '',
+  bio: doctor.bio || '',
+  about: doctor.about || '',
+  yearsOfExperience: doctor.yearsOfExperience ?? 0,
+  licenseNumber: doctor.licenseNumber || '',
+  licenseAuthority: doctor.licenseAuthority || '',
+  medicalRegistrationNumber: doctor.medicalRegistrationNumber || '',
   qualifications: (doctor.qualifications || []).map(toQualificationResponse),
   workHistory: (doctor.workHistory || []).map(toWorkHistoryResponse),
-  specialtyIds: (doctor.specialtyIds || []).map((s) =>
-    s?._id ? s._id.toString() : s?.toString(),
-  ),
-  specialties: (doctor.specialtyIds || []).map(toSpecialtyResponse).filter(Boolean),
-  languageIds: (doctor.languageIds || []).map((l) => (l?._id ? l._id.toString() : l?.toString())),
-  languages: (doctor.languageIds || []).map(toLanguageResponse).filter(Boolean),
-  consultationFee: doctor.consultationFee,
-  currency: doctor.currency,
+  specialtyIds: (doctor.specialtyIds || [])
+    .map((item) => (item?._id ? item._id.toString() : item?.toString()))
+    .filter(Boolean),
+  specialties: (doctor.specialtyIds || [])
+    .map((item) =>
+      item?.name
+        ? {
+            id: item._id.toString(),
+            name: item.name,
+            slug: item.slug,
+          }
+        : null,
+    )
+    .filter(Boolean),
+  languageIds: (doctor.languageIds || [])
+    .map((item) => (item?._id ? item._id.toString() : item?.toString()))
+    .filter(Boolean),
+  languages: (doctor.languageIds || [])
+    .map((item) =>
+      item?.name
+        ? {
+            id: item._id.toString(),
+            name: item.name,
+            code: item.code,
+          }
+        : null,
+    )
+    .filter(Boolean),
+  consultationFee: doctor.consultationFee ?? 0,
+  currency: doctor.currency || 'PKR',
   verificationStatus: doctor.verificationStatus,
-  rejectionReason: doctor.rejectionReason,
-  profileImageUrl: doctor.profileImageUrl,
-  averageRating: doctor.averageRating,
-  reviewCount: doctor.reviewCount,
+  rejectionReason: doctor.rejectionReason || '',
+  profileImageUrl: doctor.profileImageUrl || '',
+  averageRating: doctor.averageRating ?? 0,
+  reviewCount: doctor.reviewCount ?? 0,
   createdAt: doctor.createdAt?.toISOString(),
   updatedAt: doctor.updatedAt?.toISOString(),
 });
 
-const resolveSpecialtyFilter = async (query) => {
-  const specialtyParam = query.specialty || query.specialtySlug;
-  if (!specialtyParam) return null;
-
-  if (doctorsRepository.isValidObjectId(specialtyParam)) {
-    return specialtyParam;
-  }
-
-  const normalizedSlug =
-    LEGACY_SPECIALTY_SLUG_MAP[specialtyParam.toLowerCase()] ?? specialtyParam.toLowerCase();
-
-  const specialty = await Specialty.findOne({
-    slug: normalizedSlug,
-    isActive: true,
-  });
-
-  return specialty?._id || null;
-};
-
 const buildPublicSearchFilter = async (query) => {
-  const filter = {};
-  const specialtyId = await resolveSpecialtyFilter(query);
+  const filter = { verificationStatus: 'VERIFIED', isActive: true };
 
-  if (query.specialty || query.specialtySlug) {
-    if (!specialtyId) {
-      return { impossible: true };
-    }
-    filter.specialtyIds = specialtyId;
-  }
-
-  if (query.city) {
+  if (query.city?.trim()) {
     filter.city = new RegExp(`^${escapeRegex(query.city.trim())}$`, 'i');
   }
 
-  const searchTerm = (query.search || query.name || '').trim();
+  const specialtySlug = resolveSpecialtySlug(query.specialtySlug || query.specialty);
+  if (specialtySlug) {
+    const specialty = await Specialty.findOne({ slug: specialtySlug, isActive: true }).lean();
+    if (!specialty) {
+      return null;
+    }
+    filter.specialtyIds = specialty._id;
+  }
+
+  const searchTerm = (query.name || query.search || '').trim();
   if (searchTerm) {
     const regex = new RegExp(escapeRegex(searchTerm), 'i');
     const matchingUsers = await User.find({
@@ -251,15 +150,16 @@ const buildPublicSearchFilter = async (query) => {
     })
       .select('_id')
       .lean();
+    const userIds = matchingUsers.map((user) => user._id);
 
     filter.$or = [{ fullName: regex }, { title: regex }];
-    if (matchingUsers.length) {
-      filter.$or.push({ userId: { $in: matchingUsers.map((user) => user._id) } });
+    if (userIds.length) {
+      filter.$or.push({ userId: { $in: userIds } });
     }
   }
 
-  const minFee = query.minFee !== undefined && query.minFee !== '' ? Number(query.minFee) : null;
-  const maxFee = query.maxFee !== undefined && query.maxFee !== '' ? Number(query.maxFee) : null;
+  const minFee = query.minFee != null && query.minFee !== '' ? Number(query.minFee) : null;
+  const maxFee = query.maxFee != null && query.maxFee !== '' ? Number(query.maxFee) : null;
 
   if (minFee != null && !Number.isNaN(minFee)) {
     filter.consultationFee = { ...(filter.consultationFee || {}), $gte: minFee };
@@ -294,11 +194,11 @@ const ensureDoctorProfile = async (userId) => {
 
   const user = await doctorsRepository.findUserById(userId);
   if (!user) {
-    throw new AppError('User not found', 404);
+    throw new NotFoundError('User not found');
   }
 
   if (user.role !== 'DOCTOR') {
-    throw new AppError('Only doctors can access this profile', 403);
+    throw new ForbiddenError('Only doctors can access this profile');
   }
 
   await doctorsRepository.create({
@@ -307,6 +207,7 @@ const ensureDoctorProfile = async (userId) => {
     specialtyIds: [],
     languageIds: [],
     qualifications: [],
+    workHistory: [],
     currency: 'PKR',
     verificationStatus: 'PENDING',
     isActive: true,
@@ -315,29 +216,18 @@ const ensureDoctorProfile = async (userId) => {
   return doctorsRepository.findByUserId(userId);
 };
 
-const searchPublic = async (query) => {
-  const { page, limit, skip, sort } = parsePaginationQuery(
-    query,
-    PUBLIC_SORT_FIELDS,
-    'yearsOfExperience',
-    12,
-  );
-
+const searchPublicDoctors = async (query) => {
+  const { page, limit, skip, sort } = parsePaginationQuery(query, PUBLIC_SORT_FIELDS);
   const filter = await buildPublicSearchFilter(query);
 
-  if (filter.impossible) {
+  if (!filter) {
     return {
       doctors: [],
       pagination: buildPaginationMeta(page, limit, 0),
     };
   }
 
-  delete filter.impossible;
-
-  const [doctors, total] = await Promise.all([
-    doctorsRepository.searchVerified(filter, { skip, limit, sort }),
-    doctorsRepository.countVerified(filter),
-  ]);
+  const [doctors, total] = await doctorsRepository.searchPublic({ filter, sort, skip, limit });
 
   return {
     doctors: doctors.map(toDoctorSearchResult),
@@ -345,14 +235,14 @@ const searchPublic = async (query) => {
   };
 };
 
-const getPublicById = async (id) => {
-  if (!doctorsRepository.isValidObjectId(id)) {
-    throw new AppError('Doctor not found', 404);
+const getPublicDoctorById = async (doctorId) => {
+  if (!doctorsRepository.isValidObjectId(doctorId)) {
+    throw new NotFoundError('Doctor not found');
   }
 
-  const doctor = await doctorsRepository.findVerifiedById(id);
+  const doctor = await doctorsRepository.findVerifiedById(doctorId);
   if (!doctor) {
-    throw new AppError('Doctor not found', 404);
+    throw new NotFoundError('Doctor not found');
   }
 
   return { doctor: toDoctorDetailProfile(doctor) };
@@ -373,14 +263,23 @@ const updateMyProfile = async (userId, payload) => {
   }
 
   if (payload.profileImageUrl === '') {
-    updates.profileImageUrl = undefined;
+    updates.profileImageUrl = '';
   }
 
   if (payload.qualifications) {
-    updates.qualifications = payload.qualifications.map((q) => ({
-      degree: q.degree,
-      institute: q.institute,
-      year: q.year,
+    updates.qualifications = payload.qualifications.map((item) => ({
+      degree: item.degree,
+      institute: item.institute || item.institution || '',
+      year: item.year,
+    }));
+  }
+
+  if (payload.workHistory) {
+    updates.workHistory = payload.workHistory.map((item) => ({
+      organization: item.organization,
+      position: item.position,
+      from: item.from ?? item.startYear,
+      to: item.to ?? item.endYear,
     }));
   }
 
@@ -391,26 +290,17 @@ const updateMyProfile = async (userId, payload) => {
 
   const doctor = await doctorsRepository.updateByUserId(userId, updates);
   if (!doctor) {
-    throw new AppError('Doctor profile not found', 404);
+    throw new NotFoundError('Doctor profile not found');
   }
 
   return { doctor: toDoctorProfile(doctor) };
 };
 
 const listAdmin = async (query) => {
-  const { page, limit, skip, sort } = parsePaginationQuery(
-    query,
-    ADMIN_SORT_FIELDS,
-    'createdAt',
-    10,
-  );
-
+  const { page, limit, skip, sort } = parsePaginationQuery(query, ADMIN_SORT_FIELDS);
   const filter = buildAdminSearchFilter(query);
 
-  const [doctors, total] = await Promise.all([
-    doctorsRepository.searchAdmin(filter, { skip, limit, sort }),
-    doctorsRepository.countAdmin(filter),
-  ]);
+  const [doctors, total] = await doctorsRepository.searchAdmin({ filter, sort, skip, limit });
 
   return {
     doctors: doctors.map(toDoctorProfile),
@@ -420,29 +310,28 @@ const listAdmin = async (query) => {
 
 const updateVerification = async (id, { status, rejectionReason }) => {
   if (!doctorsRepository.isValidObjectId(id)) {
-    throw new AppError('Doctor not found', 404);
+    throw new NotFoundError('Doctor not found');
   }
 
   if (status === 'REJECTED' && !rejectionReason?.trim()) {
-    throw new AppError('Rejection reason is required when status is REJECTED', 422);
+    throw new BadRequestError('Rejection reason is required when status is REJECTED');
   }
 
-  const updates = {
+  const doctor = await doctorsRepository.updateVerificationStatus(id, {
     verificationStatus: status,
     rejectionReason: status === 'REJECTED' ? rejectionReason.trim() : '',
-  };
+  });
 
-  const doctor = await doctorsRepository.updateVerificationStatus(id, updates);
   if (!doctor) {
-    throw new AppError('Doctor not found', 404);
+    throw new NotFoundError('Doctor not found');
   }
 
   return { doctor: toDoctorProfile(doctor) };
 };
 
 module.exports = {
-  searchPublic,
-  getPublicById,
+  searchPublicDoctors,
+  getPublicDoctorById,
   getMyProfile,
   updateMyProfile,
   listAdmin,

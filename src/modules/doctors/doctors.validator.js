@@ -1,10 +1,11 @@
 const { z } = require('zod');
-const { paginationQuerySchema, objectIdSchema } = require('../../shared/utils/zodSchemas');
+const { objectIdSchema, paginationQuerySchema } = require('../../shared/utils/zodSchemas');
 const { GENDERS, VERIFICATION_STATUSES } = require('./doctors.model');
 
 const qualificationSchema = z.object({
   degree: z.string().trim().min(1).max(200),
-  institute: z.string().trim().min(1).max(200),
+  institute: z.string().trim().max(200).optional(),
+  institution: z.string().trim().max(200).optional(),
   year: z.number().int().min(1950).max(new Date().getFullYear()).optional(),
 });
 
@@ -13,6 +14,8 @@ const workHistorySchema = z.object({
   organization: z.string().trim().min(1).max(200),
   from: z.number().int().min(1950).max(new Date().getFullYear()).optional(),
   to: z.number().int().min(1950).max(new Date().getFullYear()).optional(),
+  startYear: z.number().int().min(1950).max(new Date().getFullYear()).optional(),
+  endYear: z.number().int().min(1950).max(new Date().getFullYear()).optional(),
 });
 
 const searchPublicQuerySchema = paginationQuerySchema.extend({

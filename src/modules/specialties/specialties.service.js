@@ -6,8 +6,8 @@ const toSpecialtyResponse = (specialty) => ({
   id: specialty._id.toString(),
   name: specialty.name,
   slug: specialty.slug,
-  description: specialty.description,
-  icon: specialty.icon,
+  description: specialty.description || '',
+  icon: specialty.icon || '',
   isActive: specialty.isActive,
   createdAt: specialty.createdAt?.toISOString(),
   updatedAt: specialty.updatedAt?.toISOString(),
@@ -24,7 +24,7 @@ const resolveSlug = (name, slug) => {
 };
 
 const listPublic = async (search) => {
-  const specialties = await specialtiesRepository.findActive(search);
+  const specialties = await specialtiesRepository.findAllActive(search);
   return {
     specialties: specialties.map(toSpecialtyResponse),
   };

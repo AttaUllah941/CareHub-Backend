@@ -10,14 +10,14 @@ const setNoCacheHeaders = (res) => {
 
 const searchPublic = asyncHandler(async (req, res) => {
   setNoCacheHeaders(res);
-  const data = await doctorsService.searchPublic(req.query);
+  const data = await doctorsService.searchPublicDoctors(req.query);
   successResponse(res, data, 'Doctors retrieved');
 });
 
 const getPublicById = asyncHandler(async (req, res) => {
   setNoCacheHeaders(res);
-  const data = await doctorsService.getPublicById(req.params.id);
-  successResponse(res, data, 'Doctor retrieved');
+  const data = await doctorsService.getPublicDoctorById(req.params.id);
+  successResponse(res, data, 'Doctor profile retrieved');
 });
 
 const getMyProfile = asyncHandler(async (req, res) => {
