@@ -19,10 +19,18 @@ const deleteById = (id) => User.findByIdAndDelete(id);
 
 const isValidObjectId = (value) => mongoose.Types.ObjectId.isValid(value);
 
+const findActiveByRoles = (roles, { skip = 0, limit = 100 } = {}) =>
+  User.find({ role: { $in: roles }, isActive: true })
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit)
+    .select('_id email firstName');
+
 module.exports = {
   findByEmail,
   findById,
   findAll,
+  findActiveByRoles,
   count,
   create,
   updateById,
