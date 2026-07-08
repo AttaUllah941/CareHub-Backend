@@ -1,6 +1,6 @@
 const { Router } = require('express');
 const asyncHandler = require('../../core/utils/asyncHandler');
-const { authenticate, authorize, optionalAuthenticate } = require('../../core/middleware/auth.middleware');
+const { authenticate, authorize } = require('../../core/middleware/auth.middleware');
 const { validate } = require('../../shared/middleware/validate.middleware');
 const { UserRole } = require('../../shared/enums/userRole.enum');
 const appointmentsController = require('./appointments.controller');
@@ -14,7 +14,8 @@ const router = Router();
 
 router.post(
   '/appointments',
-  optionalAuthenticate,
+  authenticate,
+  authorize(UserRole.PATIENT),
   validate(createAppointmentSchema),
   asyncHandler(appointmentsController.create),
 );

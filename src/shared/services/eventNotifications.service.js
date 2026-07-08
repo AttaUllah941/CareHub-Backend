@@ -57,6 +57,36 @@ const sendApplicationRejectedEmail = async ({ email, firstName, rejectionReason 
   });
 };
 
+const notifyAppointmentBooked = async ({
+  doctorUserId,
+  adminUserIds = [],
+  patientName,
+  doctorName,
+  scheduledAt,
+  consultationType,
+}) => {
+  const typeLabel = consultationType === 'video' ? 'video consultation' : 'clinic appointment';
+  const body = `${patientName} booked a ${typeLabel} with Dr. ${doctorName} on ${scheduledAt}.`;
+
+  if (doctorUserId) {
+    await notificationsService.createNotification({
+      userId: doctorUserId,
+      type: 'appointment_booked',
+      title: 'New appointment request',
+      body,
+    });
+  }
+
+  for (const adminUserId of adminUserIds) {
+    await notificationsService.createNotification({
+      userId: adminUserId,
+      type: 'appointment_booked',
+      title: 'New appointment booked',
+      body,
+    });
+  }
+};
+
 const notifyAppointmentConfirmed = async ({ userId, email, patientName, doctorName, scheduledAt }) => {
   await sendAppointmentConfirmedEmail({ email, patientName, doctorName, scheduledAt });
 
@@ -145,6 +175,7 @@ const notifyApplicationRejected = async ({ userId, email, firstName, rejectionRe
 module.exports = {
   sendRegistrationEmail,
   sendPasswordResetEmail,
+  notifyAppointmentBooked,
   notifyAppointmentConfirmed,
   notifyAppointmentCancelled,
   notifyApplicationApproved,

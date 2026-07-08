@@ -7,7 +7,9 @@ const { parsePaginationQuery, buildPaginationMeta } = require('../../core/utils/
 const doctorsRepository = require('../doctors/doctors.repository');
 const usersRepository = require('../users/users.repository');
 const appointmentsRepository = require('./appointments.repository');
+const { UserRole } = require('../../shared/enums/userRole.enum');
 const {
+  notifyAppointmentBooked,
   notifyAppointmentConfirmed,
   notifyAppointmentCancelled,
 } = require('../../shared/services/eventNotifications.service');
@@ -142,6 +144,10 @@ const cancelAppointment = async (id, user) => {
 };
 
 const createAppointment = async (payload, user) => {
+  if (!user?.id) {
+    throw new ForbiddenError('Please login first');
+  }
+
   if (!doctorsRepository.isValidObjectId(payload.doctorId)) {
     throw new NotFoundError('Doctor not found');
   }
@@ -156,24 +162,15 @@ const createAppointment = async (payload, user) => {
     throw new BadRequestError('scheduledAt must be a future date-time');
   }
 
-  let patientId = null;
-  let patientName = payload.patientName?.trim() || '';
-  let patientEmail = payload.patientEmail?.trim().toLowerCase() || '';
-  let patientPhone = payload.patientPhone?.trim() || '';
-
-  if (user?.id) {
-    const patient = await usersRepository.findById(user.id);
-    if (!patient) {
-      throw new NotFoundError('User not found');
-    }
-
-    patientId = patient._id;
-    patientName = `${patient.firstName} ${patient.lastName}`.trim();
-    patientEmail = patient.email;
-    patientPhone = patientPhone || patient.phone || '';
-  } else if (!patientName || !patientEmail) {
-    throw new BadRequestError('patientName and patientEmail are required for guest bookings');
+  const patient = await usersRepository.findById(user.id);
+  if (!patient) {
+    throw new NotFoundError('User not found');
   }
+
+  const patientId = patient._id;
+  const patientName = `${patient.firstName} ${patient.lastName}`.trim();
+  const patientEmail = patient.email;
+  const patientPhone = payload.patientPhone?.trim() || patient.phone || '';
 
   const appointment = await appointmentsRepository.create({
     doctorId: doctor._id,
@@ -187,6 +184,20 @@ const createAppointment = async (payload, user) => {
   });
 
   const populated = await appointmentsRepository.findById(appointment._id);
+  const { doctorName, doctorUserId } = await resolveDoctorDetails(populated);
+  const formattedScheduledAt = formatScheduledAt(populated.scheduledAt);
+  const adminUsers = await usersRepository.findActiveByRoles([UserRole.ADMIN, UserRole.SUPER_ADMIN]);
+  const adminUserIds = adminUsers.map((admin) => admin._id.toString());
+
+  await notifyAppointmentBooked({
+    doctorUserId,
+    adminUserIds,
+    patientName,
+    doctorName,
+    scheduledAt: formattedScheduledAt,
+    consultationType: payload.consultationType || 'video',
+  });
+
   return { appointment: toAppointmentResponse(populated) };
 };
 
