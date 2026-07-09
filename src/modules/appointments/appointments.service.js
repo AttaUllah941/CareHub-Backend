@@ -1,5 +1,6 @@
 const {
   BadRequestError,
+  ConflictError,
   ForbiddenError,
   NotFoundError,
 } = require('../../core/errors/AppError');
@@ -172,16 +173,33 @@ const createAppointment = async (payload, user) => {
   const patientEmail = patient.email;
   const patientPhone = payload.patientPhone?.trim() || patient.phone || '';
 
-  const appointment = await appointmentsRepository.create({
-    doctorId: doctor._id,
+  const existingAppointment = await appointmentsRepository.findByPatientAndDoctor(
     patientId,
-    scheduledAt,
-    patientName,
-    patientEmail,
-    patientPhone,
-    consultationType: payload.consultationType || 'video',
-    status: 'pending',
-  });
+    doctor._id,
+    { statuses: ['pending', 'confirmed'] },
+  );
+  if (existingAppointment) {
+    throw new ConflictError('An appointment with the selected doctor already exists.');
+  }
+
+  let appointment;
+  try {
+    appointment = await appointmentsRepository.create({
+      doctorId: doctor._id,
+      patientId,
+      scheduledAt,
+      patientName,
+      patientEmail,
+      patientPhone,
+      consultationType: payload.consultationType || 'video',
+      status: 'pending',
+    });
+  } catch (error) {
+    if (error.code === 11000) {
+      throw new ConflictError('An appointment with the selected doctor already exists.');
+    }
+    throw error;
+  }
 
   const populated = await appointmentsRepository.findById(appointment._id);
   const { doctorName, doctorUserId } = await resolveDoctorDetails(populated);
