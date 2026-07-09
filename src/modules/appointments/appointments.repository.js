@@ -10,6 +10,15 @@ const hasCompletedAppointment = (patientId, doctorId) =>
     status: 'completed',
   });
 
+const findByPatientAndDoctor = (patientId, doctorId, { statuses } = {}) => {
+  const filter = { patientId, doctorId };
+  if (statuses?.length) {
+    filter.status = { $in: statuses };
+  }
+
+  return Appointment.findOne(filter);
+};
+
 const findById = (id) =>
   Appointment.findById(id)
     .populate('doctorId', 'fullName userId')
@@ -76,6 +85,7 @@ const countByPatientId = (patientId, { status } = {}) => {
 module.exports = {
   isValidObjectId,
   hasCompletedAppointment,
+  findByPatientAndDoctor,
   findById,
   findByBookingRef,
   create,
