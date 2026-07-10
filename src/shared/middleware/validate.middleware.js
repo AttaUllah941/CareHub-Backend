@@ -1,7 +1,7 @@
 const { ValidationError } = require('../../core/errors/AppError');
 
 const formatZodErrors = (zodError) =>
-  zodError.errors.map((error) => ({
+  (zodError.issues ?? zodError.errors ?? []).map((error) => ({
     field: error.path.join('.') || 'root',
     message: error.message,
   }));

@@ -50,7 +50,7 @@ const updateMyProfileSchema = z
     languageIds: z.array(z.string().min(1)).optional(),
     consultationFee: z.number().min(0).optional(),
     currency: z.string().trim().max(10).optional(),
-    profileImageUrl: z.string().trim().max(500).optional(),
+    profileImageUrl: z.string().trim().url().max(1000).optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
     message: 'At least one field is required',

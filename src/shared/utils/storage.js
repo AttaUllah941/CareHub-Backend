@@ -2,6 +2,7 @@ const fs = require('fs/promises');
 const path = require('path');
 const crypto = require('crypto');
 const config = require('../../config');
+const { uploadBuffer } = require('./cloudinary');
 
 const resolveUploadDir = () => path.resolve(process.cwd(), config.storage.uploadDir);
 
@@ -9,15 +10,7 @@ const ensureUploadDir = async () => {
   await fs.mkdir(resolveUploadDir(), { recursive: true });
 };
 
-/**
- * Persists a file buffer and returns its public URL.
- * @param {Buffer} buffer
- * @param {string} filename - Original filename (used for extension)
- * @returns {Promise<{ url: string, storedName: string }>}
- */
-const saveFile = async (buffer, filename) => {
-  // TODO: Swap to S3 (or compatible object storage) in production by implementing
-  // saveFileToS3(buffer, filename) and branching on config.storage.provider === 's3'.
+const saveFileLocally = async (buffer, filename) => {
   await ensureUploadDir();
 
   const extension = path.extname(filename).toLowerCase();
@@ -30,6 +23,21 @@ const saveFile = async (buffer, filename) => {
     url: `/uploads/${storedName}`,
     storedName,
   };
+};
+
+/**
+ * Persists a file buffer and returns its public URL.
+ * @param {Buffer} buffer
+ * @param {string} filename - Original filename (used for extension)
+ * @param {string} [folder] - Cloudinary subfolder when using cloud storage
+ * @returns {Promise<{ url: string, storedName: string }>}
+ */
+const saveFile = async (buffer, filename, folder = 'general') => {
+  if (config.storage.provider === 'cloudinary') {
+    return uploadBuffer(buffer, filename, folder);
+  }
+
+  return saveFileLocally(buffer, filename);
 };
 
 module.exports = {
