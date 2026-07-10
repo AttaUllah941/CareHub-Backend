@@ -7,10 +7,38 @@ const { parsePaginationQuery, buildPaginationMeta } = require('../../core/utils/
 const { Specialty } = require('../specialties/specialties.model');
 const { User } = require('../users/users.model');
 const doctorsRepository = require('./doctors.repository');
+const clinicsRepository = require('../clinics/clinics.repository');
+const hospitalsRepository = require('../hospitals/hospitals.repository');
 const {
   toDoctorSearchResult,
   toDoctorDetailProfile,
 } = require('./doctors.public.mapper');
+
+const groupClinicsByDoctorId = (clinics) => {
+  const map = new Map();
+  for (const clinic of clinics) {
+    const doctorId = clinic.doctorId.toString();
+    if (!map.has(doctorId)) {
+      map.set(doctorId, []);
+    }
+    map.get(doctorId).push(clinic);
+  }
+  return map;
+};
+
+const groupHospitalsByDoctorId = (hospitals) => {
+  const map = new Map();
+  for (const hospital of hospitals) {
+    for (const doctorId of hospital.doctorIds || []) {
+      const id = doctorId.toString();
+      if (!map.has(id)) {
+        map.set(id, []);
+      }
+      map.get(id).push(hospital);
+    }
+  }
+  return map;
+};
 
 const PUBLIC_SORT_FIELDS = [
   'yearsOfExperience',
@@ -228,9 +256,21 @@ const searchPublicDoctors = async (query) => {
   }
 
   const [doctors, total] = await doctorsRepository.searchPublic({ filter, sort, skip, limit });
+  const doctorIds = doctors.map((doctor) => doctor._id);
+  const [allClinics, allHospitals] = await Promise.all([
+    clinicsRepository.findActiveByDoctorIds(doctorIds),
+    hospitalsRepository.findActiveByDoctorIds(doctorIds),
+  ]);
+  const clinicsByDoctor = groupClinicsByDoctorId(allClinics);
+  const hospitalsByDoctor = groupHospitalsByDoctorId(allHospitals);
 
   return {
-    doctors: doctors.map(toDoctorSearchResult),
+    doctors: doctors.map((doctor) =>
+      toDoctorSearchResult(doctor, {
+        clinics: clinicsByDoctor.get(doctor._id.toString()) ?? [],
+        hospitals: hospitalsByDoctor.get(doctor._id.toString()) ?? [],
+      }),
+    ),
     pagination: buildPaginationMeta(page, limit, total),
   };
 };
@@ -245,7 +285,14 @@ const getPublicDoctorById = async (doctorId) => {
     throw new NotFoundError('Doctor not found');
   }
 
-  return { doctor: toDoctorDetailProfile(doctor) };
+  const [clinics, hospitals] = await Promise.all([
+    clinicsRepository.findActiveByDoctorId(doctor._id),
+    hospitalsRepository.findActiveByDoctorId(doctor._id),
+  ]);
+
+  return {
+    doctor: toDoctorDetailProfile(doctor, { clinics, hospitals }),
+  };
 };
 
 const getMyProfile = async (userId) => {

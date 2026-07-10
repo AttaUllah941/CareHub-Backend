@@ -51,7 +51,39 @@ const toUserSummary = (doctor) => {
   };
 };
 
-const buildConsultationOptions = (doctor) => {
+const buildClinicsList = (doctor, { clinics = [], hospitals = [] } = {}) => {
+  const items = clinics.map((clinic) => ({
+    id: clinic._id.toString(),
+    name: clinic.name,
+    city: clinic.city,
+    address: clinic.address || '',
+    facilityType: 'clinic',
+  }));
+
+  hospitals.forEach((hospital) => {
+    items.push({
+      id: `hospital-${hospital._id.toString()}`,
+      name: hospital.name,
+      city: hospital.city,
+      address: hospital.address || '',
+      facilityType: 'hospital',
+    });
+  });
+
+  if (!items.length && doctor.city) {
+    items.push({
+      id: `${doctor._id.toString()}-clinic-fallback`,
+      name: `${doctor.city} Clinic`,
+      city: doctor.city,
+      address: '',
+      facilityType: 'clinic',
+    });
+  }
+
+  return items;
+};
+
+const buildConsultationOptions = (doctor, { clinics = [], hospitals = [] } = {}) => {
   const fee = doctor.consultationFee ?? 1500;
   const currency = doctor.currency || 'PKR';
   const doctorId = doctor._id.toString();
@@ -68,12 +100,44 @@ const buildConsultationOptions = (doctor) => {
     },
   ];
 
-  if (doctor.city) {
+  clinics.forEach((clinic) => {
     options.push({
-      id: `${doctorId}-clinic`,
+      id: clinic._id.toString(),
+      type: 'clinic',
+      name: clinic.name,
+      address: clinic.address || '',
+      location: clinic.city,
+      facilityType: 'clinic',
+      fee: clinic.consultationFee ?? fee + 500,
+      currency,
+      hours: '10:00 AM - 7:00 PM',
+      status: 'Available',
+    });
+  });
+
+  hospitals.forEach((hospital) => {
+    options.push({
+      id: `hospital-${hospital._id.toString()}`,
+      type: 'clinic',
+      name: hospital.name,
+      address: hospital.address || '',
+      location: hospital.city,
+      facilityType: 'hospital',
+      fee: fee + 500,
+      currency,
+      hours: '10:00 AM - 7:00 PM',
+      status: 'Available',
+    });
+  });
+
+  if (!clinics.length && !hospitals.length && doctor.city) {
+    options.push({
+      id: `${doctorId}-clinic-fallback`,
       type: 'clinic',
       name: `${doctor.city} Clinic`,
+      address: '',
       location: doctor.city,
+      facilityType: 'clinic',
       fee: fee + 500,
       currency,
       hours: '10:00 AM - 7:00 PM',
@@ -84,7 +148,7 @@ const buildConsultationOptions = (doctor) => {
   return options;
 };
 
-const toDoctorSearchResult = (doctor) => {
+const toDoctorSearchResult = (doctor, { clinics = [], hospitals = [] } = {}) => {
   const userId = doctor.userId?._id?.toString() || doctor.userId?.toString();
   const specialties = (doctor.specialtyIds || []).map(toSpecialtyResponse).filter(Boolean);
   const languages = (doctor.languageIds || []).map(toLanguageResponse).filter(Boolean);
@@ -107,17 +171,15 @@ const toDoctorSearchResult = (doctor) => {
     specialties,
     languageIds: languages.map((item) => item.id),
     languages,
-    clinics: doctor.city
-      ? [{ id: `${doctor._id.toString()}-clinic`, name: `${doctor.city} Clinic`, city: doctor.city }]
-      : [],
+    clinics: buildClinicsList(doctor, { clinics, hospitals }),
     availableDays: [1, 2, 3, 4, 5],
     averageRating: doctor.averageRating ?? 0,
     reviewCount: doctor.reviewCount ?? 0,
   };
 };
 
-const toDoctorDetailProfile = (doctor) => {
-  const base = toDoctorSearchResult(doctor);
+const toDoctorDetailProfile = (doctor, { clinics = [], hospitals = [] } = {}) => {
+  const base = toDoctorSearchResult(doctor, { clinics, hospitals });
   const rating = doctor.averageRating ?? 0;
 
   return {
@@ -134,7 +196,7 @@ const toDoctorDetailProfile = (doctor) => {
       clinicEnvironment: rating,
     },
     reviews: [],
-    consultationOptions: buildConsultationOptions(doctor),
+    consultationOptions: buildConsultationOptions(doctor, { clinics, hospitals }),
     timeSlots: DEFAULT_TIME_SLOTS,
   };
 };

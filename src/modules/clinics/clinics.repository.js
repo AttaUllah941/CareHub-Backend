@@ -6,6 +6,9 @@ const findById = (id) => Clinic.findById(id);
 const findActiveByDoctorId = (doctorId) =>
   Clinic.find({ doctorId, isActive: true }).sort({ name: 1 });
 
+const findActiveByDoctorIds = (doctorIds) =>
+  Clinic.find({ doctorId: { $in: doctorIds }, isActive: true }).sort({ name: 1 });
+
 const create = (data) => Clinic.create(data);
 
 const updateById = (id, data) =>
@@ -19,6 +22,7 @@ const isValidObjectId = (value) => mongoose.Types.ObjectId.isValid(value);
 module.exports = {
   findById,
   findActiveByDoctorId,
+  findActiveByDoctorIds,
   create,
   updateById,
   softDeleteById,
