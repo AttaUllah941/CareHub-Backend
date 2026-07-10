@@ -78,8 +78,16 @@ const config = Object.freeze({
   },
 
   storage: {
+    provider: process.env.STORAGE_PROVIDER || 'cloudinary',
     uploadDir: process.env.UPLOAD_DIR || 'uploads',
     maxFileSizeMb: parseInt(process.env.MAX_UPLOAD_MB, 10) || 5,
+  },
+
+  cloudinary: {
+    cloudName: process.env.CLOUDINARY_CLOUD_NAME || '',
+    apiKey: process.env.CLOUDINARY_API_KEY || '',
+    apiSecret: process.env.CLOUDINARY_API_SECRET || '',
+    folder: process.env.CLOUDINARY_FOLDER || 'carehub',
   },
 
   redis: {
@@ -102,6 +110,13 @@ if (isProduction) {
   if (!process.env.JWT_SECRET) missing.push('JWT_SECRET');
   if (!process.env.JWT_REFRESH_SECRET) missing.push('JWT_REFRESH_SECRET');
   if (!process.env.MONGODB_URI) missing.push('MONGODB_URI');
+
+  if (config.storage.provider === 'cloudinary') {
+    if (!process.env.CLOUDINARY_CLOUD_NAME) missing.push('CLOUDINARY_CLOUD_NAME');
+    if (!process.env.CLOUDINARY_API_KEY) missing.push('CLOUDINARY_API_KEY');
+    if (!process.env.CLOUDINARY_API_SECRET) missing.push('CLOUDINARY_API_SECRET');
+  }
+
   if (missing.length) {
     throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
   }

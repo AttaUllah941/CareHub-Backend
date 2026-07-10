@@ -9,7 +9,13 @@ const objectIdSchema = (label = 'id') =>
 const phoneSchema = z
   .string()
   .trim()
-  .regex(/^\+?[1-9]\d{7,14}$/, 'Invalid phone number');
+  .refine((value) => {
+    const digits = value.replace(/\D/g, '');
+    if (/^[0-9]{10,11}$/.test(digits)) {
+      return true;
+    }
+    return /^\+?[1-9]\d{7,14}$/.test(value);
+  }, 'Invalid phone number');
 
 const paginationQuerySchema = z.object({
   page: z.coerce.number().int().min(1).optional(),

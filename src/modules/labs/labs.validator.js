@@ -77,7 +77,9 @@ const createBookingSchema = z.object({
   testIds: z.array(objectIdSchema('testId')).min(1).max(20),
   scheduledDate: z.string().date(),
   scheduledSlot: z.string().trim().min(1).max(20),
-  collectionType: z.enum(COLLECTION_TYPES),
+  collectionType: z
+    .enum([...COLLECTION_TYPES, 'home_sample'])
+    .transform((value) => (value === 'home_sample' ? 'home' : value)),
   patient: patientSnapshotSchema,
 });
 

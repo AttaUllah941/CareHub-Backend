@@ -4,7 +4,7 @@ const { APPLICATION_STATUSES } = require('./doctor-applications.model');
 
 const documentSchema = z.object({
   type: z.string().trim().min(1).max(100),
-  url: z.string().trim().min(1).max(500),
+  url: z.string().trim().url().max(1000),
   mimeType: z.enum(['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']),
   size: z.number().int().min(1),
 });
