@@ -51,6 +51,16 @@ const removeDoctor = (id, doctorId) =>
     { new: true, runValidators: true },
   ).populate('doctorIds', DOCTOR_POPULATE_FIELDS);
 
+const findActiveByDoctorId = (doctorId) =>
+  Hospital.find({ doctorIds: doctorId, isActive: true })
+    .select('name address city citySlug doctorIds')
+    .sort({ name: 1 });
+
+const findActiveByDoctorIds = (doctorIds) =>
+  Hospital.find({ doctorIds: { $in: doctorIds }, isActive: true })
+    .select('name address city citySlug doctorIds')
+    .sort({ name: 1 });
+
 const findActiveByIds = (ids) =>
   Hospital.find({ _id: { $in: ids }, isActive: true }).select(
     'name slug city citySlug address rating offersSurgeries',
@@ -72,6 +82,8 @@ module.exports = {
   softDeleteById,
   addDoctor,
   removeDoctor,
+  findActiveByDoctorId,
+  findActiveByDoctorIds,
   findActiveByIds,
   updateOffersSurgeries,
   isValidObjectId,
