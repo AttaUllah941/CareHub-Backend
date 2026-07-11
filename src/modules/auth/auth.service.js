@@ -8,8 +8,9 @@ const {
 } = require('../../core/errors/AppError');
 const config = require('../../config');
 const { generateTokens, verifyRefreshToken } = require('../../core/utils/token.utils');
-const { PUBLIC_REGISTRATION_ROLES } = require('../../shared/enums/userRole.enum');
+const { PUBLIC_REGISTRATION_ROLES, UserRole } = require('../../shared/enums/userRole.enum');
 const usersRepository = require('../users/users.repository');
+const doctorApplicationsRepository = require('../doctor-applications/doctor-applications.repository');
 const authRepository = require('./auth.repository');
 const { hashToken } = require('./auth.model');
 const {
@@ -68,19 +69,43 @@ const register = async (payload) => {
   };
 };
 
+const resolveInactiveAccountError = async (user) => {
+  if (user.role !== UserRole.DOCTOR) {
+    return new UnauthorizedError('Account is inactive');
+  }
+
+  const application = await doctorApplicationsRepository.findByEmail(user.email);
+  if (application?.status === 'pending') {
+    return new UnauthorizedError(
+      'Your doctor application is pending admin approval. You can sign in after it is approved.',
+    );
+  }
+
+  if (application?.status === 'rejected') {
+    const reason = application.rejectionReason?.trim();
+    return new UnauthorizedError(
+      reason
+        ? `Your doctor application was not approved. Reason: ${reason}`
+        : 'Your doctor application was not approved.',
+    );
+  }
+
+  return new UnauthorizedError('Account is inactive');
+};
+
 const login = async ({ email, password }) => {
   const user = await usersRepository.findByEmail(email.toLowerCase());
   if (!user) {
     throw new UnauthorizedError('Invalid email or password');
   }
 
-  if (!user.isActive) {
-    throw new UnauthorizedError('Account is inactive');
-  }
-
   const passwordMatches = await bcrypt.compare(password, user.passwordHash);
   if (!passwordMatches) {
     throw new UnauthorizedError('Invalid email or password');
+  }
+
+  if (!user.isActive) {
+    throw await resolveInactiveAccountError(user);
   }
 
   return buildAuthResponse(user);
