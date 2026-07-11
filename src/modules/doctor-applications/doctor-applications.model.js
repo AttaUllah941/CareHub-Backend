@@ -12,6 +12,41 @@ const documentSchema = new mongoose.Schema(
   { _id: false },
 );
 
+const qualificationSchema = new mongoose.Schema(
+  {
+    degree: { type: String, trim: true, default: '' },
+    institution: { type: String, trim: true, default: '' },
+    year: { type: Number },
+  },
+  { _id: false },
+);
+
+const availabilitySlotSchema = new mongoose.Schema(
+  {
+    day: { type: Number, min: 0, max: 6, required: true },
+    startTime: { type: String, required: true, trim: true },
+    endTime: { type: String, required: true, trim: true },
+  },
+  { _id: false },
+);
+
+const applicationProfileSchema = new mongoose.Schema(
+  {
+    specialtySlug: { type: String, trim: true, default: '' },
+    specialtyName: { type: String, trim: true, default: '' },
+    yearsOfExperience: { type: Number, min: 0, default: 0 },
+    qualifications: { type: [qualificationSchema], default: [] },
+    clinicName: { type: String, trim: true, default: '' },
+    clinicAddress: { type: String, trim: true, default: '' },
+    clinicCity: { type: String, trim: true, default: '' },
+    clinicPhone: { type: String, trim: true, default: '' },
+    consultationFee: { type: Number, min: 0, default: 0 },
+    videoConsultationFee: { type: Number, min: 0 },
+    availability: { type: [availabilitySlotSchema], default: [] },
+  },
+  { _id: false },
+);
+
 const doctorApplicationSchema = new mongoose.Schema(
   {
     firstName: { type: String, required: true, trim: true },
@@ -43,6 +78,10 @@ const doctorApplicationSchema = new mongoose.Schema(
         validator: (docs) => Array.isArray(docs) && docs.length > 0,
         message: 'At least one document is required',
       },
+    },
+    profile: {
+      type: applicationProfileSchema,
+      default: () => ({}),
     },
     status: {
       type: String,
