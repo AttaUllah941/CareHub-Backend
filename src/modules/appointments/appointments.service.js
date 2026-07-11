@@ -69,11 +69,12 @@ const resolveDoctorDetails = async (appointment) => {
   const doctorName = doctor?.fullName || 'Doctor';
   const doctorId = doctor?._id || appointment.doctorId;
 
-  let doctorUserId = doctor?.userId?.toString() || null;
+  const doctorUserRef = doctor?.userId?._id || doctor?.userId;
+  let doctorUserId = doctorUserRef?.toString() || null;
   let doctorEmail = '';
 
-  if (doctor?.userId) {
-    const doctorUser = await usersRepository.findById(doctor.userId);
+  if (doctorUserRef) {
+    const doctorUser = await usersRepository.findById(doctorUserRef);
     doctorEmail = doctorUser?.email || '';
     doctorUserId = doctorUser?._id?.toString() || doctorUserId;
   }
@@ -81,15 +82,25 @@ const resolveDoctorDetails = async (appointment) => {
   return { doctorName, doctorId, doctorUserId, doctorEmail };
 };
 
+const getRefId = (value) => (value?._id ? value._id : value);
+
+const assertDoctorOwnsAppointment = async (appointment, doctorUser, action) => {
+  const loggedInDoctor = await doctorsRepository.findByUserId(doctorUser.id);
+  if (!loggedInDoctor) {
+    throw new ForbiddenError('Doctor profile not found');
+  }
+
+  const appointmentDoctorId = getRefId(appointment.doctorId)?.toString();
+  if (appointmentDoctorId !== loggedInDoctor._id.toString()) {
+    throw new ForbiddenError(`You can only ${action} your own appointments`);
+  }
+
+  return loggedInDoctor;
+};
+
 const confirmAppointment = async (id, doctorUser) => {
   const appointment = await getAppointmentOrThrow(id);
-  const doctor = await doctorsRepository.findById(
-    appointment.doctorId?._id || appointment.doctorId,
-  );
-
-  if (!doctor || doctor.userId.toString() !== doctorUser.id) {
-    throw new ForbiddenError('You can only confirm your own appointments');
-  }
+  await assertDoctorOwnsAppointment(appointment, doctorUser, 'confirm');
 
   if (appointment.status !== 'pending') {
     throw new BadRequestError(`Cannot confirm an appointment with status "${appointment.status}"`);
@@ -264,13 +275,7 @@ const listDoctorAppointments = async (doctorUser, query) => {
 
 const completeAppointment = async (id, doctorUser) => {
   const appointment = await getAppointmentOrThrow(id);
-  const doctor = await doctorsRepository.findById(
-    appointment.doctorId?._id || appointment.doctorId,
-  );
-
-  if (!doctor || doctor.userId.toString() !== doctorUser.id) {
-    throw new ForbiddenError('You can only complete your own appointments');
-  }
+  await assertDoctorOwnsAppointment(appointment, doctorUser, 'complete');
 
   if (appointment.status !== 'confirmed') {
     throw new BadRequestError(`Cannot complete an appointment with status "${appointment.status}"`);
@@ -282,13 +287,7 @@ const completeAppointment = async (id, doctorUser) => {
 
 const rejectAppointment = async (id, doctorUser, rejectionReason) => {
   const appointment = await getAppointmentOrThrow(id);
-  const doctor = await doctorsRepository.findById(
-    appointment.doctorId?._id || appointment.doctorId,
-  );
-
-  if (!doctor || doctor.userId.toString() !== doctorUser.id) {
-    throw new ForbiddenError('You can only reject your own appointments');
-  }
+  await assertDoctorOwnsAppointment(appointment, doctorUser, 'reject');
 
   if (appointment.status !== 'pending') {
     throw new BadRequestError(`Cannot reject an appointment with status "${appointment.status}"`);

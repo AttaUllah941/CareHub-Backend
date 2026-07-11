@@ -1,8 +1,8 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
 const { User } = require('../src/modules/users/users.model');
-const { Doctor } = require('../src/modules/doctors/doctors.model');
 const { DoctorApplication } = require('../src/modules/doctor-applications/doctor-applications.model');
+const doctorApplicationsService = require('../src/modules/doctor-applications/doctor-applications.service');
 
 const EMAIL = process.argv[2] || 'attatestingcarehub@yopmail.com';
 
@@ -23,14 +23,14 @@ const run = async () => {
   }
 
   const admin = await User.findOne({ role: { $in: ['ADMIN', 'SUPER_ADMIN'] } });
+  if (!admin) {
+    console.log('No admin user found');
+    await mongoose.disconnect();
+    return;
+  }
 
-  await User.findByIdAndUpdate(application.userId, { isActive: true });
-  await Doctor.findByIdAndUpdate(application.doctorId, { verificationStatus: 'VERIFIED' });
-  await DoctorApplication.findByIdAndUpdate(application._id, {
-    status: 'approved',
-    reviewedBy: admin?._id ?? null,
-    reviewedAt: new Date(),
-    rejectionReason: null,
+  await doctorApplicationsService.approveApplication(application._id.toString(), {
+    id: admin._id.toString(),
   });
 
   console.log(`Approved doctor application for ${EMAIL}`);
