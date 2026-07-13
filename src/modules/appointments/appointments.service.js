@@ -13,6 +13,7 @@ const {
   notifyAppointmentBooked,
   notifyAppointmentConfirmed,
   notifyAppointmentCancelled,
+  notifyAppointmentRejected,
 } = require('../../shared/services/eventNotifications.service');
 
 const formatScheduledAt = (date) =>
@@ -117,6 +118,7 @@ const confirmAppointment = async (id, doctorUser) => {
     patientName,
     doctorName,
     scheduledAt,
+    appointmentId: id,
   });
 
   return { appointment: toAppointmentResponse(updated) };
@@ -150,6 +152,7 @@ const cancelAppointment = async (id, user) => {
     patientName,
     doctorName,
     scheduledAt,
+    appointmentId: id,
   });
 
   return { appointment: toAppointmentResponse(updated) };
@@ -225,6 +228,7 @@ const createAppointment = async (payload, user) => {
     doctorName,
     scheduledAt: formattedScheduledAt,
     consultationType: payload.consultationType || 'video',
+    appointmentId: appointment._id.toString(),
   });
 
   return { appointment: toAppointmentResponse(populated) };
@@ -295,17 +299,17 @@ const rejectAppointment = async (id, doctorUser, rejectionReason) => {
 
   const updated = await appointmentsRepository.updateById(id, { status: 'rejected' });
   const { patientName, patientEmail, patientUserId } = resolvePatientDetails(updated);
-  const { doctorName, doctorUserId, doctorEmail } = await resolveDoctorDetails(updated);
+  const { doctorName } = await resolveDoctorDetails(updated);
   const scheduledAt = formatScheduledAt(updated.scheduledAt);
 
-  await notifyAppointmentCancelled({
+  await notifyAppointmentRejected({
     patientUserId,
-    doctorUserId,
     patientEmail,
-    doctorEmail,
     patientName,
     doctorName,
     scheduledAt,
+    appointmentId: id,
+    rejectionReason,
   });
 
   return { appointment: toAppointmentResponse(updated) };

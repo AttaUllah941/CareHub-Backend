@@ -8,17 +8,19 @@ const toNotificationResponse = (notification) => ({
   type: notification.type,
   title: notification.title,
   body: notification.body,
+  data: notification.data && typeof notification.data === 'object' ? notification.data : {},
   isRead: notification.isRead,
   createdAt: notification.createdAt?.toISOString(),
   updatedAt: notification.updatedAt?.toISOString(),
 });
 
-const createNotification = async ({ userId, type, title, body }) => {
+const createNotification = async ({ userId, type, title, body, data = {} }) => {
   const notification = await notificationsRepository.create({
     userId,
     type,
     title,
     body,
+    data,
     isRead: false,
   });
 
