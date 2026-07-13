@@ -41,6 +41,21 @@ const sendAppointmentCancelledEmail = async ({ email, recipientName, doctorName,
   });
 };
 
+const sendAppointmentRejectedEmail = async ({
+  email,
+  patientName,
+  doctorName,
+  scheduledAt,
+  rejectionReason,
+}) => {
+  const reasonLine = rejectionReason ? `\n\nReason: ${rejectionReason}` : '';
+  await enqueueEmail({
+    to: email,
+    subject: 'Appointment not accepted — CareHub',
+    text: `Hi ${patientName},\n\nDr. ${doctorName} could not accept your appointment scheduled for ${scheduledAt}.${reasonLine}\n\n— CareHub`,
+  });
+};
+
 const sendApplicationApprovedEmail = async ({ email, firstName }) => {
   await enqueueEmail({
     to: email,
@@ -64,9 +79,15 @@ const notifyAppointmentBooked = async ({
   doctorName,
   scheduledAt,
   consultationType,
+  appointmentId,
 }) => {
   const typeLabel = consultationType === 'video' ? 'video consultation' : 'clinic appointment';
   const body = `${patientName} booked a ${typeLabel} with Dr. ${doctorName} on ${scheduledAt}.`;
+  const data = {
+    appointmentId: appointmentId || null,
+    consultationType: consultationType || 'video',
+    link: '/doctor/appointments',
+  };
 
   if (doctorUserId) {
     await notificationsService.createNotification({
@@ -74,6 +95,7 @@ const notifyAppointmentBooked = async ({
       type: 'appointment_booked',
       title: 'New appointment request',
       body,
+      data: { ...data, link: '/doctor/appointments' },
     });
   }
 
@@ -83,11 +105,19 @@ const notifyAppointmentBooked = async ({
       type: 'appointment_booked',
       title: 'New appointment booked',
       body,
+      data: { ...data, link: '/admin/dashboard' },
     });
   }
 };
 
-const notifyAppointmentConfirmed = async ({ userId, email, patientName, doctorName, scheduledAt }) => {
+const notifyAppointmentConfirmed = async ({
+  userId,
+  email,
+  patientName,
+  doctorName,
+  scheduledAt,
+  appointmentId,
+}) => {
   await sendAppointmentConfirmedEmail({ email, patientName, doctorName, scheduledAt });
 
   if (userId) {
@@ -96,6 +126,10 @@ const notifyAppointmentConfirmed = async ({ userId, email, patientName, doctorNa
       type: 'appointment_confirmed',
       title: 'Appointment confirmed',
       body: `Your appointment with Dr. ${doctorName} on ${scheduledAt} has been confirmed.`,
+      data: {
+        appointmentId: appointmentId || null,
+        link: '/my-appointments',
+      },
     });
   }
 };
@@ -108,6 +142,7 @@ const notifyAppointmentCancelled = async ({
   patientName,
   doctorName,
   scheduledAt,
+  appointmentId,
 }) => {
   if (patientEmail) {
     await sendAppointmentCancelledEmail({
@@ -127,12 +162,15 @@ const notifyAppointmentCancelled = async ({
     });
   }
 
+  const data = { appointmentId: appointmentId || null };
+
   if (patientUserId) {
     await notificationsService.createNotification({
       userId: patientUserId,
       type: 'appointment_cancelled',
       title: 'Appointment cancelled',
       body: `Your appointment with Dr. ${doctorName} on ${scheduledAt} was cancelled.`,
+      data: { ...data, link: '/my-appointments' },
     });
   }
 
@@ -142,11 +180,47 @@ const notifyAppointmentCancelled = async ({
       type: 'appointment_cancelled',
       title: 'Appointment cancelled',
       body: `The appointment with ${patientName} on ${scheduledAt} was cancelled.`,
+      data: { ...data, link: '/doctor/appointments' },
     });
   }
 };
 
-const notifyApplicationApproved = async ({ userId, email, firstName }) => {
+const notifyAppointmentRejected = async ({
+  patientUserId,
+  patientEmail,
+  patientName,
+  doctorName,
+  scheduledAt,
+  appointmentId,
+  rejectionReason,
+}) => {
+  if (patientEmail) {
+    await sendAppointmentRejectedEmail({
+      email: patientEmail,
+      patientName,
+      doctorName,
+      scheduledAt,
+      rejectionReason,
+    });
+  }
+
+  if (patientUserId) {
+    const reasonSuffix = rejectionReason ? ` Reason: ${rejectionReason}` : '';
+    await notificationsService.createNotification({
+      userId: patientUserId,
+      type: 'appointment_rejected',
+      title: 'Appointment not accepted',
+      body: `Dr. ${doctorName} could not accept your appointment on ${scheduledAt}.${reasonSuffix}`,
+      data: {
+        appointmentId: appointmentId || null,
+        rejectionReason: rejectionReason || null,
+        link: '/my-appointments',
+      },
+    });
+  }
+};
+
+const notifyApplicationApproved = async ({ userId, email, firstName, applicationId }) => {
   await sendApplicationApprovedEmail({ email, firstName });
 
   if (userId) {
@@ -155,11 +229,21 @@ const notifyApplicationApproved = async ({ userId, email, firstName }) => {
       type: 'application_approved',
       title: 'Application approved',
       body: 'Your doctor application has been approved. You can now sign in and complete your profile.',
+      data: {
+        applicationId: applicationId || null,
+        link: '/doctor/dashboard',
+      },
     });
   }
 };
 
-const notifyApplicationRejected = async ({ userId, email, firstName, rejectionReason }) => {
+const notifyApplicationRejected = async ({
+  userId,
+  email,
+  firstName,
+  rejectionReason,
+  applicationId,
+}) => {
   await sendApplicationRejectedEmail({ email, firstName, rejectionReason });
 
   if (userId) {
@@ -168,6 +252,11 @@ const notifyApplicationRejected = async ({ userId, email, firstName, rejectionRe
       type: 'application_rejected',
       title: 'Application not approved',
       body: `Your doctor application was not approved. Reason: ${rejectionReason}`,
+      data: {
+        applicationId: applicationId || null,
+        rejectionReason: rejectionReason || null,
+        link: '/join-as-doctor',
+      },
     });
   }
 };
@@ -178,6 +267,7 @@ module.exports = {
   notifyAppointmentBooked,
   notifyAppointmentConfirmed,
   notifyAppointmentCancelled,
+  notifyAppointmentRejected,
   notifyApplicationApproved,
   notifyApplicationRejected,
 };

@@ -397,6 +397,7 @@ const approveApplication = async (id, adminUser) => {
     userId,
     email: application.email,
     firstName: application.firstName,
+    applicationId: id,
   });
 
   return { application: toApplicationResponse(updated) };
@@ -424,6 +425,7 @@ const rejectApplication = async (id, adminUser, rejectionReason) => {
     email: application.email,
     firstName: application.firstName,
     rejectionReason,
+    applicationId: id,
   });
 
   return { application: toApplicationResponse(updated) };
