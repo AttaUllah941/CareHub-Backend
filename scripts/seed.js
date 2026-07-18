@@ -22,6 +22,10 @@ const { LabTest } = require(path.join(rootDir, 'src/modules/labs/lab-tests.model
 const { SurgeryProcedure } = require(path.join(rootDir, 'src/modules/surgeries/surgery-procedures.model'));
 const { Pharmacy } = require(path.join(rootDir, 'src/modules/medicines/pharmacies.model'));
 const { Medicine } = require(path.join(rootDir, 'src/modules/medicines/medicine.model'));
+const {
+  getHospitalEnrichment,
+  getLabEnrichment,
+} = require(path.join(__dirname, 'data/facility-enrichment'));
 
 const SPECIALTIES = [
   { name: 'General Physician', description: 'Primary care and general health consultations', icon: 'stethoscope', sortOrder: 1 },
@@ -1264,8 +1268,12 @@ const seed = async () => {
       hospitalDoctorCount += 1;
     }
 
+    const citySlug = slugify(hospital.city);
+    const hospitalSlug = slugify(hospital.name);
+    const enrichment = getHospitalEnrichment(citySlug, hospitalSlug);
+
     await Hospital.updateOne(
-      { citySlug: slugify(hospital.city), slug: slugify(hospital.name) },
+      { citySlug, slug: hospitalSlug },
       {
         $set: {
           name: hospital.name,
@@ -1273,12 +1281,16 @@ const seed = async () => {
           address: hospital.address,
           description: hospital.description,
           facilities: hospital.facilities,
-          slug: slugify(hospital.name),
-          citySlug: slugify(hospital.city),
+          slug: hospitalSlug,
+          citySlug,
           doctorIds,
           isActive: true,
           rating: hospital.rating,
           reviewCount: hospital.reviewCount,
+          phone: enrichment.phone,
+          email: enrichment.email,
+          website: enrichment.website,
+          images: enrichment.images,
         },
         $unset: { location: '' },
       },
@@ -1303,13 +1315,26 @@ const seed = async () => {
   let labTestCount = 0;
 
   for (const lab of CITY_LABS) {
+    const citySlug = slugify(lab.city);
+    const labSlug = slugify(lab.name);
+    const enrichment = getLabEnrichment(citySlug, labSlug);
+
     const record = await Lab.findOneAndUpdate(
-      { citySlug: slugify(lab.city), slug: slugify(lab.name) },
+      { citySlug, slug: labSlug },
       {
         $set: {
-          ...lab,
-          slug: slugify(lab.name),
-          citySlug: slugify(lab.city),
+          name: lab.name,
+          city: lab.city,
+          address: lab.address,
+          slug: labSlug,
+          citySlug,
+          phone: enrichment.phone,
+          email: enrichment.email,
+          website: enrichment.website,
+          images: enrichment.images,
+          description: enrichment.description,
+          timings: enrichment.timings,
+          rating: enrichment.rating,
           isActive: true,
         },
       },
@@ -1349,6 +1374,7 @@ const seed = async () => {
   for (const hospital of CITY_SURGERY_HOSPITALS) {
     const hospitalSlug = slugify(hospital.name);
     const citySlug = slugify(hospital.city);
+    const enrichment = getHospitalEnrichment(citySlug, hospitalSlug);
 
     const record = await Hospital.findOneAndUpdate(
       { citySlug, slug: hospitalSlug },
@@ -1366,6 +1392,10 @@ const seed = async () => {
           offersSurgeries: true,
           rating: hospital.rating,
           reviewCount: hospital.reviewCount,
+          phone: enrichment.phone,
+          email: enrichment.email,
+          website: enrichment.website,
+          images: enrichment.images,
         },
         $unset: { location: '' },
       },

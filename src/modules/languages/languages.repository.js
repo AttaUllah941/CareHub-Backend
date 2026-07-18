@@ -1,4 +1,4 @@
-const Language = require('./languages.model');
+const { Language } = require('./languages.model');
 
 const findActive = (search) => {
   const filter = { isActive: true };

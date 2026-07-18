@@ -20,6 +20,10 @@ const toHospitalSummary = (hospital) => ({
   city: hospital.city,
   citySlug: hospital.citySlug,
   address: hospital.address,
+  phone: hospital.phone || '',
+  email: hospital.email || '',
+  website: hospital.website || '',
+  images: hospital.images || [],
   rating: hospital.rating,
   offersSurgeries: hospital.offersSurgeries,
 });

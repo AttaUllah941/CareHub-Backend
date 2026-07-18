@@ -67,6 +67,29 @@ const LEGACY_SPECIALTY_SLUG_MAP = {
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+/** Strip leading honorifics so "Dr. Ayesha Khan" matches fullName "Ayesha Khan". */
+const DOCTOR_SEARCH_HONORIFIC_PATTERN =
+  /^(?:dr\.?|doctor|prof\.?|professor|mr\.?|mrs\.?|ms\.?|miss)\s*/i;
+
+const normalizeDoctorSearchTerm = (value) => {
+  let normalized = String(value || '')
+    .trim()
+    .replace(/\s+/g, ' ');
+
+  if (!normalized) return '';
+
+  // Allow "Dr.Ayesha" (no space after the period)
+  normalized = normalized.replace(/^(dr|prof|mr|mrs|ms)\.(?=\S)/i, '$1. ');
+
+  let previous = '';
+  while (normalized !== previous) {
+    previous = normalized;
+    normalized = normalized.replace(DOCTOR_SEARCH_HONORIFIC_PATTERN, '').trim();
+  }
+
+  return normalized;
+};
+
 const resolveSpecialtySlug = (slug) => {
   if (!slug) return '';
   const normalized = slug.trim().toLowerCase();
@@ -170,14 +193,24 @@ const buildPublicSearchFilter = async (query) => {
     filter.specialtyIds = specialty._id;
   }
 
-  const searchTerm = (query.name || query.search || '').trim();
+  const rawSearchTerm = (query.name || query.search || '').trim();
+  const searchTerm = normalizeDoctorSearchTerm(rawSearchTerm) || rawSearchTerm;
   if (searchTerm) {
     const regex = new RegExp(escapeRegex(searchTerm), 'i');
-    const matchingUsers = await User.find({
-      $or: [{ firstName: regex }, { lastName: regex }],
-    })
-      .select('_id')
-      .lean();
+    const nameTokens = searchTerm.split(/\s+/).filter(Boolean);
+    const userNameFilter =
+      nameTokens.length > 1
+        ? {
+            $and: nameTokens.map((token) => ({
+              $or: [
+                { firstName: new RegExp(escapeRegex(token), 'i') },
+                { lastName: new RegExp(escapeRegex(token), 'i') },
+              ],
+            })),
+          }
+        : { $or: [{ firstName: regex }, { lastName: regex }] };
+
+    const matchingUsers = await User.find(userNameFilter).select('_id').lean();
     const userIds = matchingUsers.map((user) => user._id);
 
     filter.$or = [{ fullName: regex }, { title: regex }];
@@ -207,7 +240,8 @@ const buildAdminSearchFilter = (query) => {
     filter.verificationStatus = query.verificationStatus;
   }
 
-  const searchTerm = (query.search || '').trim();
+  const rawSearchTerm = (query.search || '').trim();
+  const searchTerm = normalizeDoctorSearchTerm(rawSearchTerm) || rawSearchTerm;
   if (searchTerm) {
     const regex = new RegExp(escapeRegex(searchTerm), 'i');
     filter.$or = [{ fullName: regex }, { title: regex }];
