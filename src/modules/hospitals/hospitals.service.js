@@ -31,13 +31,16 @@ const toHospitalResponse = (hospital, { includeDoctors = false } = {}) => {
     citySlug: hospital.citySlug,
     description: hospital.description,
     address: hospital.address,
+    phone: hospital.phone || '',
+    email: hospital.email || '',
+    website: hospital.website || '',
     location: hospital.location?.coordinates
       ? {
           type: hospital.location.type,
           coordinates: hospital.location.coordinates,
         }
       : null,
-    images: hospital.images,
+    images: hospital.images || [],
     facilities: hospital.facilities,
     doctorIds: hospital.doctorIds.map((doctorId) =>
       doctorId._id ? doctorId._id.toString() : doctorId.toString(),
@@ -45,6 +48,7 @@ const toHospitalResponse = (hospital, { includeDoctors = false } = {}) => {
     doctorCount: hospital.doctorIds.length,
     rating: hospital.rating,
     reviewCount: hospital.reviewCount,
+    offersSurgeries: Boolean(hospital.offersSurgeries),
     isActive: hospital.isActive,
     createdAt: hospital.createdAt?.toISOString(),
     updatedAt: hospital.updatedAt?.toISOString(),
@@ -158,6 +162,9 @@ const createHospital = async (payload) => {
       ...slugs,
       description: payload.description ?? '',
       address: payload.address,
+      phone: payload.phone ?? '',
+      email: payload.email ?? '',
+      website: payload.website ?? '',
       ...(location && { location }),
       images: payload.images ?? [],
       facilities: payload.facilities ?? [],
@@ -193,6 +200,9 @@ const updateHospital = async (id, payload) => {
   if (payload.city != null) updateData.city = payload.city;
   if (payload.description != null) updateData.description = payload.description;
   if (payload.address != null) updateData.address = payload.address;
+  if (payload.phone != null) updateData.phone = payload.phone;
+  if (payload.email != null) updateData.email = payload.email;
+  if (payload.website != null) updateData.website = payload.website;
   if (payload.images != null) updateData.images = payload.images;
   if (payload.facilities != null) updateData.facilities = payload.facilities;
   if (payload.doctorIds != null) updateData.doctorIds = payload.doctorIds;

@@ -22,6 +22,13 @@ const toLabResponse = (lab, { testCount } = {}) => ({
   city: lab.city,
   citySlug: lab.citySlug,
   address: lab.address,
+  description: lab.description || '',
+  phone: lab.phone || '',
+  email: lab.email || '',
+  website: lab.website || '',
+  images: lab.images || [],
+  rating: lab.rating ?? 0,
+  timings: lab.timings || '',
   isActive: lab.isActive,
   ...(testCount != null && { testCount }),
   createdAt: lab.createdAt?.toISOString(),
@@ -199,6 +206,13 @@ const createLab = async (payload) => {
       name: payload.name,
       city: payload.city,
       address: payload.address,
+      description: payload.description ?? '',
+      phone: payload.phone ?? '',
+      email: payload.email ?? '',
+      website: payload.website ?? '',
+      images: payload.images ?? [],
+      rating: payload.rating ?? 0,
+      timings: payload.timings ?? '',
       ...slugs,
       isActive: payload.isActive ?? true,
     });
@@ -219,6 +233,13 @@ const updateLab = async (id, payload) => {
   if (payload.name != null) updateData.name = payload.name;
   if (payload.city != null) updateData.city = payload.city;
   if (payload.address != null) updateData.address = payload.address;
+  if (payload.description != null) updateData.description = payload.description;
+  if (payload.phone != null) updateData.phone = payload.phone;
+  if (payload.email != null) updateData.email = payload.email;
+  if (payload.website != null) updateData.website = payload.website;
+  if (payload.images != null) updateData.images = payload.images;
+  if (payload.rating != null) updateData.rating = payload.rating;
+  if (payload.timings != null) updateData.timings = payload.timings;
   if (payload.isActive != null) updateData.isActive = payload.isActive;
 
   if (payload.name != null || payload.city != null || payload.slug != null || payload.citySlug != null) {

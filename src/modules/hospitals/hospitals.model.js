@@ -8,6 +8,9 @@ const hospitalSchema = new mongoose.Schema(
     citySlug: { type: String, required: true, trim: true, lowercase: true, index: true },
     description: { type: String, trim: true, default: '' },
     address: { type: String, required: true, trim: true },
+    phone: { type: String, trim: true, default: '' },
+    email: { type: String, trim: true, lowercase: true, default: '' },
+    website: { type: String, trim: true, default: '' },
     location: {
       type: {
         type: String,
