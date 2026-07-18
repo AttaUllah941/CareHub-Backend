@@ -14,9 +14,16 @@ const createRedisClient = () => {
   }
 
   const client = new Redis(config.redis.url, {
-    maxRetriesPerRequest: null,
+    maxRetriesPerRequest: 1,
     enableReadyCheck: true,
     lazyConnect: true,
+    retryStrategy: (times) => {
+      // Stop hammering Redis when it is not running locally.
+      if (times > 3) {
+        return null;
+      }
+      return Math.min(times * 200, 1000);
+    },
   });
 
   client.on('error', (error) => {
@@ -49,10 +56,16 @@ const connectRedis = async () => {
     if (client.status === 'wait') {
       await client.connect();
     }
+    await client.ping();
     logger.info('Redis connected');
     return client;
   } catch (error) {
     logger.warn(`Redis unavailable (${error.message}) — using in-process queue fallback`);
+    try {
+      client.disconnect(false);
+    } catch {
+      // ignore disconnect errors during fallback
+    }
     redisClient = null;
     return null;
   }
@@ -60,7 +73,11 @@ const connectRedis = async () => {
 
 const disconnectRedis = async () => {
   if (redisClient) {
-    await redisClient.quit();
+    try {
+      await redisClient.quit();
+    } catch {
+      redisClient.disconnect(false);
+    }
     redisClient = null;
   }
 };
