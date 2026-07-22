@@ -17,6 +17,9 @@
   ],
   "author": "CareHub",
   "license": "ISC",
+  "engines": {
+    "node": ">=20"
+  },
   "type": "commonjs",
   "dependencies": {
     "bcryptjs": "^3.0.2",
