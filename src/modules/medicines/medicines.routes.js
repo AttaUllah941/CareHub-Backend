@@ -45,7 +45,7 @@ router.get(
 
 router.get(
   '/orders/:id',
-  authenticate,
+  optionalAuthenticate,
   validate(orderIdParamsSchema, 'params'),
   medicineOrdersController.getById,
 );

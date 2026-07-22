@@ -25,6 +25,7 @@ const { Medicine } = require(path.join(rootDir, 'src/modules/medicines/medicine.
 const {
   getHospitalEnrichment,
   getLabEnrichment,
+  getPharmacyEnrichment,
 } = require(path.join(__dirname, 'data/facility-enrichment'));
 
 const SPECIALTIES = [
@@ -1436,16 +1437,35 @@ const seed = async () => {
   const pharmacies = [
     { name: 'D-Well Pharma', city: 'Lahore', address: 'MM Alam Road, Gulberg' },
     { name: 'Sehat Pharmacy', city: 'Karachi', address: 'PECHS Block 6' },
+    { name: 'Green Plus Pharmacy', city: 'Islamabad', address: 'Jinnah Avenue, Blue Area' },
+    { name: 'Care Mart Pharmacy', city: 'Multan', address: 'Bosan Road, Gulgasht' },
   ];
 
+  // Sparse unique index skips missing fields, not explicit nulls
+  await Pharmacy.updateMany({ userId: null }, { $unset: { userId: 1 } });
+
   for (const pharmacy of pharmacies) {
+    const citySlug = slugify(pharmacy.city);
+    const pharmacySlug = slugify(pharmacy.name);
+    const enrichment = getPharmacyEnrichment(citySlug, pharmacySlug);
+
     const record = await Pharmacy.findOneAndUpdate(
-      { citySlug: slugify(pharmacy.city), slug: slugify(pharmacy.name) },
+      { citySlug, slug: pharmacySlug },
       {
         $set: {
           ...pharmacy,
-          slug: slugify(pharmacy.name),
-          citySlug: slugify(pharmacy.city),
+          slug: pharmacySlug,
+          citySlug,
+          description: enrichment.description,
+          phone: enrichment.phone,
+          email: enrichment.email,
+          website: enrichment.website,
+          images: enrichment.images,
+          rating: enrichment.rating,
+          timings: enrichment.timings,
+          isHomeDelivery: enrichment.isHomeDelivery,
+          deliveryFee: enrichment.deliveryFee,
+          deliveryTime: enrichment.deliveryTime,
           isActive: true,
         },
       },
@@ -1471,6 +1491,69 @@ const seed = async () => {
     );
   }
   console.log(`Seeded ${pharmacies.length} pharmacies with sample medicines`);
+
+  const pharmacyAccounts = [
+    {
+      email: 'pharmacy.dwell@carehub.test',
+      firstName: 'D-Well',
+      lastName: 'Manager',
+      phone: '+923001100001',
+      pharmacySlug: slugify('D-Well Pharma'),
+      citySlug: slugify('Lahore'),
+    },
+    {
+      email: 'pharmacy.sehat@carehub.test',
+      firstName: 'Sehat',
+      lastName: 'Manager',
+      phone: '+923001100002',
+      pharmacySlug: slugify('Sehat Pharmacy'),
+      citySlug: slugify('Karachi'),
+    },
+    {
+      email: 'pharmacy.greenplus@carehub.test',
+      firstName: 'Green Plus',
+      lastName: 'Manager',
+      phone: '+923001100003',
+      pharmacySlug: slugify('Green Plus Pharmacy'),
+      citySlug: slugify('Islamabad'),
+    },
+    {
+      email: 'pharmacy.caremart@carehub.test',
+      firstName: 'Care Mart',
+      lastName: 'Manager',
+      phone: '+923001100004',
+      pharmacySlug: slugify('Care Mart Pharmacy'),
+      citySlug: slugify('Multan'),
+    },
+  ];
+
+  for (const account of pharmacyAccounts) {
+    let user = await User.findOne({ email: account.email });
+    if (!user) {
+      user = await User.create({
+        firstName: account.firstName,
+        lastName: account.lastName,
+        email: account.email,
+        phone: account.phone,
+        passwordHash,
+        role: UserRole.PHARMACY,
+        isActive: true,
+        isEmailVerified: true,
+      });
+    } else if (user.role !== UserRole.PHARMACY) {
+      user.role = UserRole.PHARMACY;
+      user.passwordHash = passwordHash;
+      user.isActive = true;
+      user.isEmailVerified = true;
+      await user.save();
+    }
+
+    await Pharmacy.updateOne(
+      { citySlug: account.citySlug, slug: account.pharmacySlug },
+      { $set: { userId: user._id } },
+    );
+    console.log(`Pharmacy user: ${account.email} / Password123!`);
+  }
 
   await mongoose.disconnect();
   console.log('Seed completed successfully');

@@ -22,6 +22,10 @@ const IMG = {
   lab4: 'https://images.unsplash.com/photo-1576086213369-97a306d36557?w=1200&q=80&auto=format&fit=crop',
   lab5: 'https://images.unsplash.com/photo-1581093588401-fbb62a02f120?w=1200&q=80&auto=format&fit=crop',
   lab6: 'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=1200&q=80&auto=format&fit=crop',
+  pharmacy1: 'https://images.unsplash.com/photo-1587854692152-cf660a4e3718?w=1200&q=80&auto=format&fit=crop',
+  pharmacy2: 'https://images.unsplash.com/photo-1576602976047-174e57a47881?w=1200&q=80&auto=format&fit=crop',
+  pharmacy3: 'https://images.unsplash.com/photo-1631549916768-4119b2e5f926?w=1200&q=80&auto=format&fit=crop',
+  pharmacy4: 'https://images.unsplash.com/photo-1585435557343-3b092031a831?w=1200&q=80&auto=format&fit=crop',
 };
 
 const hospital = (phone, email, website, images) => ({
@@ -41,6 +45,21 @@ const lab = (phone, email, website, images, extras = {}) => ({
   description:
     extras.description ||
     'Accredited diagnostic laboratory offering pathology, molecular testing, and home sample collection.',
+});
+
+const pharmacy = (phone, email, website, images, extras = {}) => ({
+  phone,
+  email,
+  website,
+  images: Array.isArray(images) ? images : [images],
+  timings: extras.timings || 'Mon–Sun: 9:00 AM – 10:00 PM',
+  rating: extras.rating ?? 4.5,
+  description:
+    extras.description ||
+    'Licensed pharmacy offering authentic medicines with home delivery and prescription support.',
+  isHomeDelivery: extras.isHomeDelivery !== false,
+  deliveryFee: extras.deliveryFee ?? 150,
+  deliveryTime: extras.deliveryTime || '45–90 min',
 });
 
 const HOSPITAL_ENRICHMENT = {
@@ -131,6 +150,55 @@ const LAB_ENRICHMENT = {
   'sargodha|punjab-lab-sargodha': lab('+92-48-3734567', 'info@punjablab.pk', 'https://www.punjablab.pk', [IMG.lab4, IMG.lab1]),
 };
 
+const PHARMACY_ENRICHMENT = {
+  'lahore|d-well-pharma': pharmacy(
+    '+92-42-35781234',
+    'hello@dwellpharma.pk',
+    'https://www.dwellpharma.pk',
+    [IMG.pharmacy1, IMG.pharmacy3],
+    {
+      rating: 4.7,
+      description: 'Premium Gulberg pharmacy with verified medicines, vaccine fridge, and same-day delivery across Lahore.',
+      deliveryFee: 120,
+      deliveryTime: '30–60 min',
+    },
+  ),
+  'karachi|sehat-pharmacy': pharmacy(
+    '+92-21-34311234',
+    'care@sehatpharmacy.pk',
+    'https://www.sehatpharmacy.pk',
+    [IMG.pharmacy2, IMG.pharmacy4],
+    {
+      rating: 4.6,
+      description: 'Neighbourhood PECHS pharmacy focused on chronic care medicines, OTC wellness, and reliable home delivery.',
+      deliveryFee: 150,
+      deliveryTime: '45–90 min',
+    },
+  ),
+  'islamabad|green-plus-pharmacy': pharmacy(
+    '+92-51-2345678',
+    'info@greenpluspharmacy.pk',
+    'https://www.greenpluspharmacy.pk',
+    [IMG.pharmacy3, IMG.pharmacy1],
+    {
+      rating: 4.8,
+      description: 'Blue Area pharmacy with compounding support, diabetic care aisle, and city-wide delivery.',
+      deliveryFee: 100,
+      deliveryTime: '40–75 min',
+    },
+  ),
+  'multan|care-mart-pharmacy': pharmacy(
+    '+92-61-4516789',
+    'orders@caremartpharmacy.pk',
+    'https://www.caremartpharmacy.pk',
+    [IMG.pharmacy4, IMG.pharmacy2],
+    {
+      rating: 4.5,
+      description: 'Trusted Multan pharmacy for branded and generic medicines with evening delivery windows.',
+    },
+  ),
+};
+
 const getHospitalEnrichment = (citySlug, slug) =>
   HOSPITAL_ENRICHMENT[`${citySlug}|${slug}`] || {
     phone: '',
@@ -150,10 +218,26 @@ const getLabEnrichment = (citySlug, slug) =>
     description: 'Diagnostic laboratory offering pathology and home sample collection.',
   };
 
+const getPharmacyEnrichment = (citySlug, slug) =>
+  PHARMACY_ENRICHMENT[`${citySlug}|${slug}`] || {
+    phone: '',
+    email: '',
+    website: '',
+    images: [IMG.pharmacy1],
+    timings: 'Mon–Sun: 9:00 AM – 10:00 PM',
+    rating: 4.5,
+    description: 'Licensed pharmacy offering authentic medicines with home delivery.',
+    isHomeDelivery: true,
+    deliveryFee: 150,
+    deliveryTime: '45–90 min',
+  };
+
 module.exports = {
   IMG,
   HOSPITAL_ENRICHMENT,
   LAB_ENRICHMENT,
+  PHARMACY_ENRICHMENT,
   getHospitalEnrichment,
   getLabEnrichment,
+  getPharmacyEnrichment,
 };
