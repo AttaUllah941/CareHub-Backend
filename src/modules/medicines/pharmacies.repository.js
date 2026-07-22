@@ -11,6 +11,8 @@ const findById = (id, { includeInactive = false } = {}) => {
 
 const findByIdAdmin = (id) => Pharmacy.findById(id);
 
+const findByUserId = (userId) => Pharmacy.findOne({ userId, isActive: true });
+
 const findPublic = (filter, { skip, limit, sort }) =>
   Pharmacy.find({ ...filter, isActive: true }).sort(sort).skip(skip).limit(limit);
 
@@ -29,6 +31,7 @@ const isValidObjectId = (value) => mongoose.Types.ObjectId.isValid(value);
 module.exports = {
   findById,
   findByIdAdmin,
+  findByUserId,
   findPublic,
   countPublic,
   create,

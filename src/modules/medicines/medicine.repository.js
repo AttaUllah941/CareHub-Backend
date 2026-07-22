@@ -1,7 +1,11 @@
 const mongoose = require('mongoose');
 const { Medicine } = require('./medicine.model');
 
-const PHARMACY_POPULATE = { path: 'pharmacyId', select: 'name slug city citySlug address' };
+const PHARMACY_POPULATE = {
+  path: 'pharmacyId',
+  select:
+    'name slug city citySlug address description phone email website images rating timings isHomeDelivery deliveryFee deliveryTime',
+};
 
 const findById = (id, { includeInactive = false } = {}) => {
   const filter = { _id: id };

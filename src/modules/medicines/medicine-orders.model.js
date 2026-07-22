@@ -9,8 +9,8 @@ const ORDER_STATUSES = [
   'cancelled',
 ];
 
-const DELIVERY_TYPES = ['home', 'pickup'];
-const PAYMENT_METHODS = ['cod', 'jazzcash', 'easypaisa'];
+const DELIVERY_TYPES = ['home_delivery', 'store_pickup'];
+const PAYMENT_METHODS = ['cod', 'card', 'jazzcash', 'easypaisa'];
 
 const orderItemSchema = new mongoose.Schema(
   {
@@ -67,6 +67,31 @@ const medicineOrderSchema = new mongoose.Schema(
       type: String,
       enum: PAYMENT_METHODS,
       required: true,
+    },
+    patientName: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    patientPhone: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    notes: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    scheduledDate: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    scheduledTimeSlot: {
+      type: String,
+      trim: true,
+      default: '',
     },
     couponCode: {
       type: String,

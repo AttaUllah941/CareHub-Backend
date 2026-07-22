@@ -8,7 +8,8 @@ const POPULATE_DEFAULT = [
   },
   {
     path: 'items.pharmacyId',
-    select: 'name slug city citySlug address',
+    select:
+      'name slug city citySlug address description phone email website images rating timings isHomeDelivery deliveryFee deliveryTime',
   },
   { path: 'userId', select: 'firstName lastName email phone' },
 ];
@@ -24,6 +25,21 @@ const findByUser = (userId, filter, { skip, limit, sort }) =>
 
 const countByUser = (userId, filter) => MedicineOrder.countDocuments({ userId, ...filter });
 
+const pharmacyFilter = (pharmacyId, filter = {}) => ({
+  'items.pharmacyId': pharmacyId,
+  ...filter,
+});
+
+const findByPharmacy = (pharmacyId, filter, { skip, limit, sort }) =>
+  MedicineOrder.find(pharmacyFilter(pharmacyId, filter))
+    .sort(sort)
+    .skip(skip)
+    .limit(limit)
+    .populate(POPULATE_DEFAULT);
+
+const countByPharmacy = (pharmacyId, filter) =>
+  MedicineOrder.countDocuments(pharmacyFilter(pharmacyId, filter));
+
 const create = (data) => MedicineOrder.create(data);
 
 const updateById = (id, data) =>
@@ -37,6 +53,8 @@ module.exports = {
   findById,
   findByUser,
   countByUser,
+  findByPharmacy,
+  countByPharmacy,
   create,
   updateById,
   isValidObjectId,

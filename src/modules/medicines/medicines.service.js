@@ -17,13 +17,27 @@ const MEDICINE_SORT_FIELDS = ['name', 'price', 'createdAt'];
 const PHARMACY_SORT_FIELDS = ['name', 'createdAt'];
 const ORDER_SORT_FIELDS = ['createdAt', 'status', 'totalAmount'];
 
-const toPharmacyResponse = (pharmacy) => ({
+const toPharmacySummary = (pharmacy) => ({
   id: pharmacy._id.toString(),
   name: pharmacy.name,
   slug: pharmacy.slug,
   city: pharmacy.city,
   citySlug: pharmacy.citySlug,
   address: pharmacy.address,
+  description: pharmacy.description || '',
+  phone: pharmacy.phone || '',
+  email: pharmacy.email || '',
+  website: pharmacy.website || '',
+  images: pharmacy.images || [],
+  rating: pharmacy.rating ?? 0,
+  timings: pharmacy.timings || '',
+  isHomeDelivery: pharmacy.isHomeDelivery !== false,
+  deliveryFee: pharmacy.deliveryFee ?? 150,
+  deliveryTime: pharmacy.deliveryTime || '45–90 min',
+});
+
+const toPharmacyResponse = (pharmacy) => ({
+  ...toPharmacySummary(pharmacy),
   isActive: pharmacy.isActive,
   createdAt: pharmacy.createdAt?.toISOString(),
   updatedAt: pharmacy.updatedAt?.toISOString(),
@@ -42,12 +56,8 @@ const toMedicineResponse = (medicine) => ({
   isActive: medicine.isActive,
   pharmacy: medicine.pharmacyId?.name
     ? {
+        ...toPharmacySummary(medicine.pharmacyId),
         id: medicine.pharmacyId._id.toString(),
-        name: medicine.pharmacyId.name,
-        slug: medicine.pharmacyId.slug,
-        city: medicine.pharmacyId.city,
-        citySlug: medicine.pharmacyId.citySlug,
-        address: medicine.pharmacyId.address,
       }
     : undefined,
   createdAt: medicine.createdAt?.toISOString(),
@@ -85,6 +95,11 @@ const toOrderResponse = (order) => ({
   deliveryType: order.deliveryType,
   address: order.address,
   paymentMethod: order.paymentMethod,
+  patientName: order.patientName || '',
+  patientPhone: order.patientPhone || '',
+  notes: order.notes || '',
+  scheduledDate: order.scheduledDate || '',
+  scheduledTimeSlot: order.scheduledTimeSlot || '',
   couponCode: order.couponCode || '',
   prescriptionUrls: order.prescriptionUrls,
   status: order.status,
@@ -191,6 +206,16 @@ const createPharmacy = async (payload) => {
       city: payload.city,
       address: payload.address,
       ...slugs,
+      description: payload.description ?? '',
+      phone: payload.phone ?? '',
+      email: payload.email ?? '',
+      website: payload.website ?? '',
+      images: payload.images ?? [],
+      rating: payload.rating ?? 0,
+      timings: payload.timings ?? '',
+      isHomeDelivery: payload.isHomeDelivery !== false,
+      deliveryFee: payload.deliveryFee ?? 150,
+      deliveryTime: payload.deliveryTime ?? '45–90 min',
       isActive: payload.isActive ?? true,
     });
 
@@ -210,6 +235,16 @@ const updatePharmacy = async (id, payload) => {
   if (payload.name != null) updateData.name = payload.name;
   if (payload.city != null) updateData.city = payload.city;
   if (payload.address != null) updateData.address = payload.address;
+  if (payload.description != null) updateData.description = payload.description;
+  if (payload.phone != null) updateData.phone = payload.phone;
+  if (payload.email != null) updateData.email = payload.email;
+  if (payload.website != null) updateData.website = payload.website;
+  if (payload.images != null) updateData.images = payload.images;
+  if (payload.rating != null) updateData.rating = payload.rating;
+  if (payload.timings != null) updateData.timings = payload.timings;
+  if (payload.isHomeDelivery != null) updateData.isHomeDelivery = payload.isHomeDelivery;
+  if (payload.deliveryFee != null) updateData.deliveryFee = payload.deliveryFee;
+  if (payload.deliveryTime != null) updateData.deliveryTime = payload.deliveryTime;
   if (payload.isActive != null) updateData.isActive = payload.isActive;
 
   if (payload.name != null || payload.city != null || payload.slug != null || payload.citySlug != null) {
@@ -406,6 +441,11 @@ const createOrder = async (payload, user) => {
       deliveryType: payload.deliveryType,
       address: payload.address,
       paymentMethod: payload.paymentMethod,
+      patientName: payload.patientName ?? '',
+      patientPhone: payload.patientPhone ?? '',
+      notes: payload.notes ?? '',
+      scheduledDate: payload.scheduledDate ?? '',
+      scheduledTimeSlot: payload.scheduledTimeSlot ?? '',
       couponCode: payload.couponCode ?? '',
       prescriptionUrls,
       status: 'placed',
@@ -458,8 +498,18 @@ const getOrderById = async (id, user) => {
     throw new NotFoundError('Order not found');
   }
 
-  const ownerId = order.userId?._id?.toString() || order.userId?.toString();
-  if (!isAdmin(user) && (!ownerId || ownerId !== user.id)) {
+  const ownerId = order.userId?._id?.toString() || order.userId?.toString() || null;
+
+  if (isAdmin(user)) {
+    return { order: toOrderResponse(order) };
+  }
+
+  // Guest checkout orders (no linked user) can be viewed by order id alone.
+  if (!ownerId) {
+    return { order: toOrderResponse(order) };
+  }
+
+  if (!user || ownerId !== user.id) {
     throw new ForbiddenError('You do not have permission to view this order');
   }
 
@@ -487,6 +537,83 @@ const updateOrderStatus = async (id, nextStatus) => {
   return { order: toOrderResponse(updated) };
 };
 
+const orderBelongsToPharmacy = (order, pharmacyId) => {
+  const pid = pharmacyId.toString();
+  return (order.items ?? []).some((item) => {
+    const itemPharmacyId = item.pharmacyId?._id?.toString() || item.pharmacyId?.toString();
+    return itemPharmacyId === pid;
+  });
+};
+
+const toPharmacyScopedOrderResponse = (order, pharmacyId) => {
+  const full = toOrderResponse(order);
+  const pid = pharmacyId.toString();
+  const items = (full.items ?? []).filter((item) => item.pharmacyId === pid);
+  const totalAmount = items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+
+  return {
+    ...full,
+    items,
+    totalAmount,
+    pharmacyTotalAmount: totalAmount,
+    orderTotalAmount: full.totalAmount,
+  };
+};
+
+const listPharmacyOrders = async (pharmacy, query) => {
+  const { page, limit, skip, sort } = parsePaginationQuery(query, ORDER_SORT_FIELDS);
+  const filter = {};
+
+  if (query.status) {
+    filter.status = query.status;
+  }
+
+  const [orders, total] = await Promise.all([
+    medicineOrdersRepository.findByPharmacy(pharmacy._id, filter, { skip, limit, sort }),
+    medicineOrdersRepository.countByPharmacy(pharmacy._id, filter),
+  ]);
+
+  return {
+    pharmacy: toPharmacyResponse(pharmacy),
+    orders: orders.map((order) => toPharmacyScopedOrderResponse(order, pharmacy._id)),
+    pagination: buildPaginationMeta(page, limit, total),
+  };
+};
+
+const getPharmacyOrderById = async (id, pharmacy) => {
+  if (!medicineOrdersRepository.isValidObjectId(id)) {
+    throw new NotFoundError('Order not found');
+  }
+
+  const order = await medicineOrdersRepository.findById(id);
+  if (!order || !orderBelongsToPharmacy(order, pharmacy._id)) {
+    throw new NotFoundError('Order not found');
+  }
+
+  return { order: toPharmacyScopedOrderResponse(order, pharmacy._id) };
+};
+
+const updatePharmacyOrderStatus = async (id, nextStatus, pharmacy) => {
+  if (!medicineOrdersRepository.isValidObjectId(id)) {
+    throw new NotFoundError('Order not found');
+  }
+
+  const order = await medicineOrdersRepository.findById(id);
+  if (!order || !orderBelongsToPharmacy(order, pharmacy._id)) {
+    throw new NotFoundError('Order not found');
+  }
+
+  const allowed = STATUS_TRANSITIONS[order.status] ?? [];
+  if (!allowed.includes(nextStatus)) {
+    throw new BadRequestError(
+      `Cannot transition order from "${order.status}" to "${nextStatus}"`,
+    );
+  }
+
+  const updated = await medicineOrdersRepository.updateById(id, { status: nextStatus });
+  return { order: toPharmacyScopedOrderResponse(updated, pharmacy._id) };
+};
+
 module.exports = {
   listPublicMedicines,
   getPublicMedicineDetail,
@@ -500,4 +627,7 @@ module.exports = {
   listMyOrders,
   getOrderById,
   updateOrderStatus,
+  listPharmacyOrders,
+  getPharmacyOrderById,
+  updatePharmacyOrderStatus,
 };

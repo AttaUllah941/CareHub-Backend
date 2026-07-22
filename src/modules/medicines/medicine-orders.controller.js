@@ -23,9 +23,31 @@ const updateStatus = asyncHandler(async (req, res) => {
   successResponse(res, data, 'Order status updated');
 });
 
+const listPharmacy = asyncHandler(async (req, res) => {
+  const data = await medicinesService.listPharmacyOrders(req.pharmacy, req.query);
+  successResponse(res, data, 'Pharmacy orders retrieved');
+});
+
+const getPharmacyById = asyncHandler(async (req, res) => {
+  const data = await medicinesService.getPharmacyOrderById(req.params.id, req.pharmacy);
+  successResponse(res, data, 'Order retrieved');
+});
+
+const updatePharmacyStatus = asyncHandler(async (req, res) => {
+  const data = await medicinesService.updatePharmacyOrderStatus(
+    req.params.id,
+    req.body.status,
+    req.pharmacy,
+  );
+  successResponse(res, data, 'Order status updated');
+});
+
 module.exports = {
   create,
   listMine,
   getById,
   updateStatus,
+  listPharmacy,
+  getPharmacyById,
+  updatePharmacyStatus,
 };
