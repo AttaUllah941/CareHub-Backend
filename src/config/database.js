@@ -10,9 +10,11 @@ const connectDatabase = async () => {
   try {
     await mongoose.connect(config.mongodb.uri, {
       maxPoolSize: config.mongodb.maxPoolSize,
-      serverSelectionTimeoutMS: 5000,
+      serverSelectionTimeoutMS: 15000,
       socketTimeoutMS: 45000,
     });
+
+    logger.info('MongoDB connected');
 
     mongoose.connection.on('error', (err) => {
       logger.error('MongoDB connection error:', err);

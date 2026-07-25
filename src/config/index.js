@@ -2,7 +2,7 @@ require('dotenv').config();
 
 const isProduction = process.env.NODE_ENV === 'production';
 
-/** Comma-separated list, e.g. http://localhost:4200 */
+/** Comma-separated list, e.g. http://localhost:4200,https://app.netlify.app */
 const parseCorsOrigins = (value) => {
   if (!value) return ['http://localhost:4200'];
   return value.split(',').map((entry) => entry.trim()).filter(Boolean);
@@ -10,6 +10,10 @@ const parseCorsOrigins = (value) => {
 
 const isLocalhostOrigin = (origin) =>
   /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+
+/** Netlify production + deploy-preview / branch deploys */
+const isNetlifyOrigin = (origin) =>
+  /^https:\/\/([a-z0-9-]+--)?[a-z0-9-]+\.netlify\.app$/i.test(origin);
 
 /**
  * CORS origin callback — in development, any localhost port is allowed
@@ -27,6 +31,11 @@ const resolveCorsOrigin = (origin, callback) => {
   }
 
   if (!isProduction && isLocalhostOrigin(origin)) {
+    return callback(null, true);
+  }
+
+  // Optional: allow all *.netlify.app while FRONTEND_URL is being finalized
+  if (process.env.CORS_ALLOW_NETLIFY === 'true' && isNetlifyOrigin(origin)) {
     return callback(null, true);
   }
 
@@ -110,6 +119,12 @@ if (isProduction) {
   if (!process.env.JWT_SECRET) missing.push('JWT_SECRET');
   if (!process.env.JWT_REFRESH_SECRET) missing.push('JWT_REFRESH_SECRET');
   if (!process.env.MONGODB_URI) missing.push('MONGODB_URI');
+  if (!process.env.CORS_ORIGIN && process.env.CORS_ALLOW_NETLIFY !== 'true') {
+    missing.push('CORS_ORIGIN (or set CORS_ALLOW_NETLIFY=true)');
+  }
+  if (!process.env.FRONTEND_URL && process.env.CORS_ALLOW_NETLIFY !== 'true') {
+    missing.push('FRONTEND_URL (or set CORS_ALLOW_NETLIFY=true)');
+  }
 
   if (config.storage.provider === 'cloudinary') {
     if (!process.env.CLOUDINARY_CLOUD_NAME) missing.push('CLOUDINARY_CLOUD_NAME');
@@ -119,6 +134,13 @@ if (isProduction) {
 
   if (missing.length) {
     throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+  }
+
+  if (
+    process.env.JWT_SECRET === 'dev-jwt-secret-change-me' ||
+    process.env.JWT_SECRET === 'your-super-secret-jwt-key-change-in-production'
+  ) {
+    throw new Error('JWT_SECRET must be changed for production');
   }
 }
 

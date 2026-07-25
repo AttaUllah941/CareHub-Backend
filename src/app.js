@@ -27,9 +27,16 @@ const applyWriteRateLimiter = (req, res, next) => {
 const createApp = () => {
   const app = express();
 
+  // Render / reverse proxies — required for correct client IPs & rate limiting
+  if (config.isProduction) {
+    app.set('trust proxy', 1);
+  }
+
   ensureUploadDir().catch(() => {});
 
-  app.use(helmet());
+  app.use(helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  }));
   app.use(cors({ origin: config.cors.origin, credentials: true, optionsSuccessStatus: 204 }));
   app.use(globalRateLimiter);
   app.use(applyWriteRateLimiter);

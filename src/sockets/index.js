@@ -19,6 +19,13 @@ const resolveSocketCorsOrigin = (origin, callback) => {
     return callback(null, true);
   }
 
+  if (
+    process.env.CORS_ALLOW_NETLIFY === 'true' &&
+    /^https:\/\/([a-z0-9-]+--)?[a-z0-9-]+\.netlify\.app$/i.test(origin)
+  ) {
+    return callback(null, true);
+  }
+
   return callback(new Error(`Origin ${origin} not allowed by CORS`));
 };
 

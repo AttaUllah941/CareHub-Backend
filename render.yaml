@@ -1,0 +1,59 @@
+# CareHub API — Render Blueprint
+# Docs: https://render.com/docs/blueprint-spec
+#
+# Deploy steps:
+# 1. Push CareHub-Backend to GitHub
+# 2. Render → New → Blueprint → select this repo (or New Web Service)
+# 3. Set the environment variables marked sync: false in the Render dashboard
+# 4. After first deploy, copy the service URL (https://xxxx.onrender.com)
+# 5. Use that URL as API_URL / SOCKET_URL on Netlify
+# 6. Set CORS_ORIGIN + FRONTEND_URL to your Netlify site URL
+
+services:
+  - type: web
+    name: carehub-api
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: API_PREFIX
+        value: /api/v1
+      - key: REDIS_ENABLED
+        value: "false"
+      - key: STORAGE_PROVIDER
+        value: cloudinary
+      - key: CLOUDINARY_FOLDER
+        value: carehub
+      - key: JWT_EXPIRES_IN
+        value: 15m
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 30d
+      - key: RATE_LIMIT_WINDOW_MS
+        value: "900000"
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: "300"
+      # Allow Netlify until you set the exact site URL
+      - key: CORS_ALLOW_NETLIFY
+        value: "true"
+      # —— Set these in the Render dashboard (do not commit secrets) ——
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: CORS_ORIGIN
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
