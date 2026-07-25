@@ -3,6 +3,6 @@ node_modules/
 logs/
 coverage/
 dist/
-uploads/
+/uploads/
 *.log
 .DS_Store
