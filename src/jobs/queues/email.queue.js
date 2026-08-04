@@ -42,24 +42,25 @@ const getEmailQueue = () => {
 
 const enqueueEmail = async (payload) => {
   if (!config.redis.enabled || !queueReady) {
-    await processEmailJob(payload);
-    return { queued: false, fallback: true };
+    const result = await processEmailJob(payload);
+    return { queued: false, fallback: true, ...result };
   }
 
   const queue = getEmailQueue();
   if (!queue) {
-    await processEmailJob(payload);
-    return { queued: false, fallback: true };
+    const result = await processEmailJob(payload);
+    return { queued: false, fallback: true, ...result };
   }
 
   try {
     const job = await queue.add(payload);
-    return { queued: true, jobId: job.id };
+    // Queued for async delivery — treat as accepted; worker reports failures separately.
+    return { queued: true, jobId: job.id, delivered: true };
   } catch (error) {
     queueReady = false;
     logger.warn(`Email queue add failed (${error.message}) — using in-process fallback`);
-    await processEmailJob(payload);
-    return { queued: false, fallback: true };
+    const result = await processEmailJob(payload);
+    return { queued: false, fallback: true, ...result };
   }
 };
 

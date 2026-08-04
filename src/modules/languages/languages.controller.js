@@ -1,13 +1,16 @@
 const { successResponse } = require('../../shared/utils/apiResponse');
 const asyncHandler = require('../../shared/utils/asyncHandler');
+const { setPublicReferenceCacheHeaders } = require('../../shared/utils/publicCacheHeaders');
 const languagesService = require('./languages.service');
 
 const listPublic = asyncHandler(async (req, res) => {
+  setPublicReferenceCacheHeaders(res);
   const data = await languagesService.listPublic(req.query.search);
   res.status(200).json(successResponse(data, 'Languages retrieved'));
 });
 
 const getPublicBySlug = asyncHandler(async (req, res) => {
+  setPublicReferenceCacheHeaders(res);
   const data = await languagesService.getPublicByCode(req.params.slug);
   res.status(200).json(successResponse(data, 'Language retrieved'));
 });

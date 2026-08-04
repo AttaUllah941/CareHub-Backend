@@ -34,11 +34,24 @@ Stack: **Netlify** (frontend) · **Render** (API) · **MongoDB Atlas** (database
 | `CLOUDINARY_API_KEY` | from Cloudinary |
 | `CLOUDINARY_API_SECRET` | from Cloudinary |
 | `CLOUDINARY_FOLDER` | `carehub` |
+| `SMTP_HOST` | e.g. `smtp.gmail.com` / Brevo / Resend SMTP |
+| `SMTP_PORT` | `587` |
+| `SMTP_SECURE` | `false` (use `true` for port 465) |
+| `SMTP_USER` | SMTP username |
+| `SMTP_PASS` | SMTP password / app password |
+| `SMTP_FROM` | e.g. `CareHub <noreply@yourdomain.com>` |
+
+> **Forgot password emails will not arrive until SMTP is set.** Without SMTP the API still
+> returns success (for security), but nothing is mailed. On local/dev it also returns a
+> clickable reset link in the UI when SMTP is missing.
 
 5. Deploy → copy URL, e.g. `https://carehub-api.onrender.com`
 6. Open `https://carehub-api.onrender.com/health` — should return success
 
-> Free Render services sleep after idle; first request can take ~30–60s.
+> Free Render services sleep after ~15 minutes idle; the first request can take ~30–60s.
+> To keep the API warm, ping `/health` every 10–14 minutes (UptimeRobot, cron-job.org, or
+> `HEALTH_URL=https://YOUR_API.onrender.com/health npm run keep-alive` from a long-running host).
+> Public specialties/languages responses are HTTP-cached and held in-process for ~10 minutes.
 
 ## 2. Deploy frontend on Netlify
 

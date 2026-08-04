@@ -1,5 +1,7 @@
 const { Specialty } = require('./specialties.model');
 
+const PUBLIC_LIST_FIELDS = 'name slug description icon isActive createdAt updatedAt sortOrder';
+
 const findAllActive = (search) => {
   const filter = { isActive: true };
 
@@ -9,7 +11,10 @@ const findAllActive = (search) => {
     filter.$or = [{ name: regex }, { slug: regex }, { description: regex }];
   }
 
-  return Specialty.find(filter).sort({ sortOrder: 1, name: 1 });
+  return Specialty.find(filter)
+    .select(PUBLIC_LIST_FIELDS)
+    .sort({ sortOrder: 1, name: 1 })
+    .lean();
 };
 
 const findById = (id) => Specialty.findById(id);
@@ -17,7 +22,9 @@ const findById = (id) => Specialty.findById(id);
 const findBySlug = (slug) => Specialty.findOne({ slug: slug.toLowerCase() });
 
 const findActiveBySlug = (slug) =>
-  Specialty.findOne({ slug: slug.toLowerCase(), isActive: true });
+  Specialty.findOne({ slug: slug.toLowerCase(), isActive: true })
+    .select(PUBLIC_LIST_FIELDS)
+    .lean();
 
 const findAll = ({ page, limit, skip, sort, search, isActive }) => {
   const filter = {};

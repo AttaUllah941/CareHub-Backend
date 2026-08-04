@@ -9,6 +9,8 @@ const languageSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+languageSchema.index({ isActive: 1, name: 1 });
+
 const Language = mongoose.models.Language || mongoose.model('Language', languageSchema);
 
 module.exports = { Language };

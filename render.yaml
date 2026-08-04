@@ -37,6 +37,9 @@ services:
         value: "900000"
       - key: RATE_LIMIT_MAX_REQUESTS
         value: "300"
+      # Single free instance — keep Atlas pool small for faster cold connects
+      - key: MONGODB_POOL_SIZE
+        value: "10"
       # Allow Netlify until you set the exact site URL
       - key: CORS_ALLOW_NETLIFY
         value: "true"
@@ -56,4 +59,17 @@ services:
       - key: CLOUDINARY_API_KEY
         sync: false
       - key: CLOUDINARY_API_SECRET
+        sync: false
+      # Email delivery (required for forgot-password emails)
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_SECURE
+        value: "false"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
         sync: false
