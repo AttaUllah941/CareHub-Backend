@@ -12,6 +12,9 @@ const specialtySchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+// Matches public list filter + sort for efficient active catalog scans.
+specialtySchema.index({ isActive: 1, sortOrder: 1, name: 1 });
+
 const Specialty =
   mongoose.models.Specialty || mongoose.model('Specialty', specialtySchema);
 

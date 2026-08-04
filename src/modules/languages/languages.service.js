@@ -1,14 +1,18 @@
 const AppError = require('../../shared/errors/AppError');
 const slugify = require('../../shared/utils/slugify');
+const { createMemoryCache } = require('../../shared/utils/memoryCache');
 const languagesRepository = require('./languages.repository');
+
+const listCache = createMemoryCache({ defaultTtlMs: 10 * 60 * 1000 });
+const LIST_CACHE_PREFIX = 'languages:public:';
 
 const toLanguageResponse = (language) => ({
   id: language._id.toString(),
   name: language.name,
   code: language.code,
   isActive: language.isActive,
-  createdAt: language.createdAt?.toISOString(),
-  updatedAt: language.updatedAt?.toISOString(),
+  createdAt: language.createdAt?.toISOString?.() ?? language.createdAt,
+  updatedAt: language.updatedAt?.toISOString?.() ?? language.updatedAt,
 });
 
 const resolveCode = (code) => {
@@ -21,11 +25,19 @@ const resolveCode = (code) => {
   return value;
 };
 
+const invalidatePublicListCache = () => {
+  listCache.clear();
+};
+
 const listPublic = async (search) => {
-  const languages = await languagesRepository.findActive(search);
-  return {
-    languages: languages.map(toLanguageResponse),
-  };
+  const key = `${LIST_CACHE_PREFIX}${search ? String(search).trim().toLowerCase() : ''}`;
+
+  return listCache.wrap(key, async () => {
+    const languages = await languagesRepository.findActive(search);
+    return {
+      languages: languages.map(toLanguageResponse),
+    };
+  });
 };
 
 const getPublicByCode = async (code) => {
@@ -52,6 +64,7 @@ const create = async (payload) => {
     isActive: true,
   });
 
+  invalidatePublicListCache();
   return { language: toLanguageResponse(language) };
 };
 
@@ -76,6 +89,7 @@ const update = async (id, payload) => {
   }
 
   const updated = await languagesRepository.updateById(id, updates);
+  invalidatePublicListCache();
   return { language: toLanguageResponse(updated) };
 };
 
@@ -91,6 +105,7 @@ const remove = async (id) => {
   }
 
   const updated = await languagesRepository.softDeleteById(id);
+  invalidatePublicListCache();
   return { language: toLanguageResponse(updated) };
 };
 
@@ -100,4 +115,5 @@ module.exports = {
   create,
   update,
   remove,
+  invalidatePublicListCache,
 };

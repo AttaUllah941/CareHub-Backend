@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const compression = require('compression');
 const swaggerUi = require('swagger-ui-express');
 const config = require('./config');
 const swaggerSpec = require('./config/swagger');
@@ -38,6 +39,7 @@ const createApp = () => {
     crossOriginResourcePolicy: { policy: 'cross-origin' },
   }));
   app.use(cors({ origin: config.cors.origin, credentials: true, optionsSuccessStatus: 204 }));
+  app.use(compression());
   app.use(globalRateLimiter);
   app.use(applyWriteRateLimiter);
   app.use(express.json({ limit: '10mb' }));
@@ -49,6 +51,7 @@ const createApp = () => {
   }
 
   app.get('/health', (_req, res) => {
+    res.set('Cache-Control', 'no-store');
     res.status(200).json({
       success: true,
       message: 'CareHub API is running',

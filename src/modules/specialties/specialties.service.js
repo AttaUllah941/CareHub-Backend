@@ -1,6 +1,10 @@
 const AppError = require('../../shared/errors/AppError');
 const { slugify } = require('../../shared/utils/slugify');
+const { createMemoryCache } = require('../../shared/utils/memoryCache');
 const specialtiesRepository = require('./specialties.repository');
+
+const listCache = createMemoryCache({ defaultTtlMs: 10 * 60 * 1000 });
+const LIST_CACHE_PREFIX = 'specialties:public:';
 
 const toSpecialtyResponse = (specialty) => ({
   id: specialty._id.toString(),
@@ -9,8 +13,8 @@ const toSpecialtyResponse = (specialty) => ({
   description: specialty.description || '',
   icon: specialty.icon || '',
   isActive: specialty.isActive,
-  createdAt: specialty.createdAt?.toISOString(),
-  updatedAt: specialty.updatedAt?.toISOString(),
+  createdAt: specialty.createdAt?.toISOString?.() ?? specialty.createdAt,
+  updatedAt: specialty.updatedAt?.toISOString?.() ?? specialty.updatedAt,
 });
 
 const resolveSlug = (name, slug) => {
@@ -23,11 +27,19 @@ const resolveSlug = (name, slug) => {
   return value;
 };
 
+const invalidatePublicListCache = () => {
+  listCache.clear();
+};
+
 const listPublic = async (search) => {
-  const specialties = await specialtiesRepository.findAllActive(search);
-  return {
-    specialties: specialties.map(toSpecialtyResponse),
-  };
+  const key = `${LIST_CACHE_PREFIX}${search ? String(search).trim().toLowerCase() : ''}`;
+
+  return listCache.wrap(key, async () => {
+    const specialties = await specialtiesRepository.findAllActive(search);
+    return {
+      specialties: specialties.map(toSpecialtyResponse),
+    };
+  });
 };
 
 const getPublicBySlug = async (slug) => {
@@ -56,6 +68,7 @@ const create = async (payload) => {
     isActive: true,
   });
 
+  invalidatePublicListCache();
   return { specialty: toSpecialtyResponse(specialty) };
 };
 
@@ -80,6 +93,7 @@ const update = async (id, payload) => {
   }
 
   const updated = await specialtiesRepository.updateById(id, updates);
+  invalidatePublicListCache();
   return { specialty: toSpecialtyResponse(updated) };
 };
 
@@ -95,6 +109,7 @@ const remove = async (id) => {
   }
 
   const updated = await specialtiesRepository.softDeleteById(id);
+  invalidatePublicListCache();
   return { specialty: toSpecialtyResponse(updated) };
 };
 
@@ -104,4 +119,5 @@ module.exports = {
   create,
   update,
   remove,
+  invalidatePublicListCache,
 };

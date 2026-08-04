@@ -7,12 +7,14 @@ const {
   UnauthorizedError,
 } = require('../../core/errors/AppError');
 const config = require('../../config');
+const logger = require('../../core/utils/logger');
 const { generateTokens, verifyRefreshToken } = require('../../core/utils/token.utils');
 const { PUBLIC_REGISTRATION_ROLES, UserRole } = require('../../shared/enums/userRole.enum');
 const usersRepository = require('../users/users.repository');
 const doctorApplicationsRepository = require('../doctor-applications/doctor-applications.repository');
 const authRepository = require('./auth.repository');
 const { hashToken } = require('./auth.model');
+const { isSmtpConfigured } = require('../../jobs/processors/email.processor');
 const {
   sendRegistrationEmail,
   sendPasswordResetEmail,
@@ -156,9 +158,10 @@ const getMe = async (userId) => {
 
 const requestPasswordReset = async (email) => {
   const user = await usersRepository.findByEmail(email.toLowerCase());
+  const genericMessage = 'If an account exists for that email, a reset link has been sent';
 
   if (!user) {
-    return { message: 'If an account exists for that email, a reset link has been sent' };
+    return { message: genericMessage };
   }
 
   const resetToken = crypto.randomBytes(32).toString('hex');
@@ -171,13 +174,38 @@ const requestPasswordReset = async (email) => {
     expiresAt,
   });
 
-  await sendPasswordResetEmail({
+  const emailResult = await sendPasswordResetEmail({
     email: user.email,
     firstName: user.firstName,
     resetToken,
   });
 
-  return { message: 'If an account exists for that email, a reset link has been sent' };
+  const response = { message: genericMessage };
+
+  // When SMTP is missing, expose the link in non-production so local/QA can reset.
+  // Never leak tokens in production — configure SMTP_* on Render instead.
+  const exposeResetLink =
+    !emailResult.delivered &&
+    (!config.isProduction || process.env.PASSWORD_RESET_EXPOSE_TOKEN === 'true');
+
+  if (exposeResetLink) {
+    response.devResetToken = resetToken;
+    response.resetUrl = emailResult.resetUrl;
+    response.emailDelivered = false;
+  } else if (!emailResult.delivered) {
+    logger.error(
+      'Password reset email was not delivered. Configure SMTP_HOST, SMTP_USER, SMTP_PASS (and FRONTEND_URL) on the API host.',
+    );
+    response.emailDelivered = false;
+  } else {
+    response.emailDelivered = true;
+  }
+
+  if (!isSmtpConfigured() && config.isProduction) {
+    logger.error('SMTP is not configured — password reset emails cannot be sent in production.');
+  }
+
+  return response;
 };
 
 const resetPassword = async ({ token, password }) => {

@@ -69,6 +69,7 @@ router.get('/', (_req, res) => {
 });
 
 router.use('/medical-specialties', specialtiesRoutes);
+router.use('/specialties', specialtiesRoutes);
 router.use('/doctors', reviewsDoctorRoutes);
 router.use('/doctors', doctorsPortalRoutes);
 router.use('/doctors', doctorsPublicRoutes);
@@ -83,8 +84,6 @@ router.use('/', appointmentsRoutes);
 router.use('/doctor/appointments', appointmentsDoctorRoutes);
 router.use('/prescriptions', prescriptionsRoutes);
 router.use('/doctor/prescriptions', prescriptionsDoctorRoutes);
-router.use('/specialties', specialtiesRoutes);
-router.use('/medical-specialties', specialtiesRoutes);
 router.use('/languages', languagesRoutes);
 router.use('/doctor-applications', doctorApplicationsRoutes);
 router.use('/admin/doctor-applications', doctorApplicationsAdminRoutes);
