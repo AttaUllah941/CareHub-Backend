@@ -6,6 +6,7 @@ const globalRateLimiter = rateLimit({
   max: config.rateLimit.max,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => req.path === '/health' || req.url === '/health',
   message: {
     success: false,
     message: 'Too many requests, please try again later.',

@@ -9,20 +9,19 @@ const findById = (id, { includeInactive = false } = {}) => {
     filter.isActive = true;
   }
 
-  return Hospital.findOne(filter).populate('doctorIds', DOCTOR_POPULATE_FIELDS);
+  return Hospital.findOne(filter).populate('doctorIds', DOCTOR_POPULATE_FIELDS).lean();
 };
 
 const findByIdAdmin = (id) =>
   Hospital.findById(id).populate('doctorIds', DOCTOR_POPULATE_FIELDS);
 
 const findByCitySlugAndSlug = (citySlug, slug) =>
-  Hospital.findOne({ citySlug, slug, isActive: true }).populate(
-    'doctorIds',
-    DOCTOR_POPULATE_FIELDS,
-  );
+  Hospital.findOne({ citySlug, slug, isActive: true })
+    .populate('doctorIds', DOCTOR_POPULATE_FIELDS)
+    .lean();
 
 const findPublic = (filter, { skip, limit, sort }) =>
-  Hospital.find({ ...filter, isActive: true }).sort(sort).skip(skip).limit(limit);
+  Hospital.find({ ...filter, isActive: true }).sort(sort).skip(skip).limit(limit).lean();
 
 const countPublic = (filter) => Hospital.countDocuments({ ...filter, isActive: true });
 
@@ -54,17 +53,19 @@ const removeDoctor = (id, doctorId) =>
 const findActiveByDoctorId = (doctorId) =>
   Hospital.find({ doctorIds: doctorId, isActive: true })
     .select('name address city citySlug doctorIds')
-    .sort({ name: 1 });
+    .sort({ name: 1 })
+    .lean();
 
 const findActiveByDoctorIds = (doctorIds) =>
   Hospital.find({ doctorIds: { $in: doctorIds }, isActive: true })
     .select('name address city citySlug doctorIds')
-    .sort({ name: 1 });
+    .sort({ name: 1 })
+    .lean();
 
 const findActiveByIds = (ids) =>
-  Hospital.find({ _id: { $in: ids }, isActive: true }).select(
-    'name slug city citySlug address rating offersSurgeries',
-  );
+  Hospital.find({ _id: { $in: ids }, isActive: true })
+    .select('name slug city citySlug address rating offersSurgeries')
+    .lean();
 
 const updateOffersSurgeries = (id, offersSurgeries) =>
   Hospital.findByIdAndUpdate(id, { offersSurgeries }, { new: true });

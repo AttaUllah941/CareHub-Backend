@@ -210,7 +210,7 @@ const buildPublicSearchFilter = async (query) => {
           }
         : { $or: [{ firstName: regex }, { lastName: regex }] };
 
-    const matchingUsers = await User.find(userNameFilter).select('_id').lean();
+    const matchingUsers = await User.find(userNameFilter).select('_id').limit(200).lean();
     const userIds = matchingUsers.map((user) => user._id);
 
     filter.$or = [{ fullName: regex }, { title: regex }];

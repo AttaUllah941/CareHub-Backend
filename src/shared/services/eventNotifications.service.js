@@ -18,12 +18,15 @@ const sendRegistrationEmail = async ({ email, firstName }) => {
 const sendPasswordResetEmail = async ({ email, firstName, resetToken }) => {
   const resetUrl = buildFrontendUrl(`/auth/reset-password?token=${resetToken}`);
 
-  const result = await enqueueEmail({
-    to: email,
-    subject: 'Reset your CareHub password',
-    text: `Hi ${firstName},\n\nWe received a request to reset your password. Use this link within 1 hour:\n\n${resetUrl}\n\nIf you did not request this, you can ignore this email.\n\n— CareHub`,
-    html: `<p>Hi ${firstName},</p><p>We received a request to reset your password. Use this link within 1 hour:</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>If you did not request this, you can ignore this email.</p><p>— CareHub</p>`,
-  });
+  const result = await enqueueEmail(
+    {
+      to: email,
+      subject: 'Reset your CareHub password',
+      text: `Hi ${firstName},\n\nWe received a request to reset your password. Use this link within 1 hour:\n\n${resetUrl}\n\nIf you did not request this, you can ignore this email.\n\n— CareHub`,
+      html: `<p>Hi ${firstName},</p><p>We received a request to reset your password. Use this link within 1 hour:</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>If you did not request this, you can ignore this email.</p><p>— CareHub</p>`,
+    },
+    { waitForDelivery: true },
+  );
 
   return {
     resetUrl,
@@ -106,14 +109,18 @@ const notifyAppointmentBooked = async ({
     });
   }
 
-  for (const adminUserId of adminUserIds) {
-    await notificationsService.createNotification({
-      userId: adminUserId,
-      type: 'appointment_booked',
-      title: 'New appointment booked',
-      body,
-      data: { ...data, link: '/admin/dashboard' },
-    });
+  if (adminUserIds.length) {
+    await Promise.all(
+      adminUserIds.map((adminUserId) =>
+        notificationsService.createNotification({
+          userId: adminUserId,
+          type: 'appointment_booked',
+          title: 'New appointment booked',
+          body,
+          data: { ...data, link: '/admin/dashboard' },
+        }),
+      ),
+    );
   }
 };
 

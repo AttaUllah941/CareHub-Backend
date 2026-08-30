@@ -3,6 +3,16 @@ const { Appointment } = require('./appointments.model');
 
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 
+const doctorPopulate = {
+  path: 'doctorId',
+  select: 'fullName userId',
+  populate: { path: 'userId', select: 'email' },
+};
+const patientPopulate = { path: 'patientId', select: 'firstName lastName email phone' };
+
+const withListPopulates = (query) =>
+  query.populate(doctorPopulate).populate(patientPopulate).lean();
+
 const hasCompletedAppointment = (patientId, doctorId) =>
   Appointment.exists({
     patientId,
@@ -16,23 +26,19 @@ const findByPatientAndDoctor = (patientId, doctorId, { statuses } = {}) => {
     filter.status = { $in: statuses };
   }
 
-  return Appointment.findOne(filter);
+  return Appointment.findOne(filter).lean();
 };
 
 const findById = (id) =>
-  Appointment.findById(id)
-    .populate('doctorId', 'fullName userId')
-    .populate('patientId', 'firstName lastName email phone');
+  withListPopulates(Appointment.findById(id));
 
 const findByBookingRef = (bookingRef) =>
-  Appointment.findOne({ bookingRef })
-    .populate('doctorId', 'fullName userId')
-    .populate('patientId', 'firstName lastName email phone');
+  withListPopulates(Appointment.findOne({ bookingRef }));
 
 const updateById = (id, data) =>
-  Appointment.findByIdAndUpdate(id, data, { new: true, runValidators: true })
-    .populate('doctorId', 'fullName userId')
-    .populate('patientId', 'firstName lastName email phone');
+  withListPopulates(
+    Appointment.findByIdAndUpdate(id, data, { new: true, runValidators: true }),
+  );
 
 const create = (data) => Appointment.create(data);
 
@@ -42,12 +48,9 @@ const findByDoctorId = (doctorId, { skip = 0, limit = 20, sort = { scheduledAt: 
     filter.status = status;
   }
 
-  return Appointment.find(filter)
-    .sort(sort)
-    .skip(skip)
-    .limit(limit)
-    .populate('doctorId', 'fullName userId')
-    .populate('patientId', 'firstName lastName email phone');
+  return withListPopulates(
+    Appointment.find(filter).sort(sort).skip(skip).limit(limit),
+  );
 };
 
 const countByDoctorId = (doctorId, { status } = {}) => {
@@ -65,12 +68,9 @@ const findByPatientId = (patientId, { skip = 0, limit = 20, sort = { scheduledAt
     filter.status = status;
   }
 
-  return Appointment.find(filter)
-    .sort(sort)
-    .skip(skip)
-    .limit(limit)
-    .populate('doctorId', 'fullName userId')
-    .populate('patientId', 'firstName lastName email phone');
+  return withListPopulates(
+    Appointment.find(filter).sort(sort).skip(skip).limit(limit),
+  );
 };
 
 const countByPatientId = (patientId, { status } = {}) => {

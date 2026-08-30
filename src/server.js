@@ -10,16 +10,11 @@ const logger = require('./core/utils/logger');
 
 /**
  * Application entry point.
- * Connects to MongoDB, Redis, and starts the HTTP server with Bull email workers.
+ * Starts HTTP as soon as MongoDB is ready; Redis/email queue initialize in the background
+ * so a slow/unreachable Redis does not delay /health or first API responses.
  */
 const startServer = async () => {
   await connectDatabase();
-  const redisClient = await connectRedis();
-
-  const emailQueue = await initEmailQueue(redisClient);
-  if (emailQueue) {
-    startEmailProcessor(emailQueue);
-  }
 
   const app = createApp();
   const httpServer = http.createServer(app);
@@ -33,6 +28,19 @@ const startServer = async () => {
     logger.info(`Swagger docs: http://localhost:${config.port}${config.apiPrefix}/docs`);
     logger.info(`Video consult signaling: ws://localhost:${config.port}/video-consult`);
   });
+
+  // Background: Redis + Bull email workers (optional). Fallback is in-process when unavailable.
+  void (async () => {
+    try {
+      const redisClient = await connectRedis();
+      const emailQueue = await initEmailQueue(redisClient);
+      if (emailQueue) {
+        startEmailProcessor(emailQueue);
+      }
+    } catch (error) {
+      logger.warn(`Background queue init failed (${error.message}) — using in-process email fallback`);
+    }
+  })();
 
   const gracefulShutdown = async () => {
     httpServer.close(async () => {

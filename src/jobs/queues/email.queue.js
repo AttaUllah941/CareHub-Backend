@@ -40,16 +40,36 @@ const getEmailQueue = () => {
   return emailQueue;
 };
 
-const enqueueEmail = async (payload) => {
-  if (!config.redis.enabled || !queueReady) {
+const runInProcessFallback = async (payload, { waitForDelivery }) => {
+  if (waitForDelivery) {
     const result = await processEmailJob(payload);
     return { queued: false, fallback: true, ...result };
   }
 
+  // Do not block HTTP responses on SMTP (can take seconds when Redis is down).
+  setImmediate(() => {
+    processEmailJob(payload).catch((error) => {
+      logger.warn(`In-process email fallback failed: ${error.message}`);
+    });
+  });
+
+  return { queued: false, fallback: true, delivered: true };
+};
+
+/**
+ * @param {object} payload
+ * @param {{ waitForDelivery?: boolean }} [options]
+ *   waitForDelivery — when true (password reset), await SMTP in fallback mode so callers
+ *   can report delivery failure. Default false keeps write APIs non-blocking.
+ */
+const enqueueEmail = async (payload, { waitForDelivery = false } = {}) => {
+  if (!config.redis.enabled || !queueReady) {
+    return runInProcessFallback(payload, { waitForDelivery });
+  }
+
   const queue = getEmailQueue();
   if (!queue) {
-    const result = await processEmailJob(payload);
-    return { queued: false, fallback: true, ...result };
+    return runInProcessFallback(payload, { waitForDelivery });
   }
 
   try {
@@ -59,8 +79,7 @@ const enqueueEmail = async (payload) => {
   } catch (error) {
     queueReady = false;
     logger.warn(`Email queue add failed (${error.message}) — using in-process fallback`);
-    const result = await processEmailJob(payload);
-    return { queued: false, fallback: true, ...result };
+    return runInProcessFallback(payload, { waitForDelivery });
   }
 };
 

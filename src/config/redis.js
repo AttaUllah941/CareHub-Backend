@@ -17,6 +17,7 @@ const createRedisClient = () => {
     maxRetriesPerRequest: 1,
     enableReadyCheck: true,
     lazyConnect: true,
+    connectTimeout: 2000,
     retryStrategy: (times) => {
       // Stop hammering Redis when it is not running locally.
       if (times > 3) {
