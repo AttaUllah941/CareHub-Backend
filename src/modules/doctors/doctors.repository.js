@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const { Doctor } = require('./doctors.model');
 const usersRepository = require('../users/users.repository');
 
+/** Full populate for portal/admin responses that need contact + catalog metadata. */
 const userPopulate = {
   path: 'userId',
   select: 'firstName lastName email phone isActive isEmailVerified role createdAt',
@@ -15,10 +16,36 @@ const languagePopulate = {
   select: 'name code isActive',
 };
 
+/** Slimmer populate for public marketplace cards/detail — same mapper fields, less payload over the wire from Mongo. */
+const publicUserPopulate = {
+  path: 'userId',
+  select: 'firstName lastName',
+};
+const publicSpecialtyPopulate = {
+  path: 'specialtyIds',
+  select: 'name slug description icon isActive',
+};
+const publicLanguagePopulate = {
+  path: 'languageIds',
+  select: 'name code isActive',
+};
+
 const withPopulates = (query) =>
   query.populate(userPopulate).populate(specialtyPopulate).populate(languagePopulate);
 
+const withPublicPopulates = (query) =>
+  query
+    .populate(publicUserPopulate)
+    .populate(publicSpecialtyPopulate)
+    .populate(publicLanguagePopulate);
+
 const findById = (id) => withPopulates(Doctor.findById(id));
+
+/** Lightweight verified-doctor check for booking — avoids 3 populates on the hot write path. */
+const findVerifiedLeanById = (id) =>
+  Doctor.findOne({ _id: id, verificationStatus: 'VERIFIED', isActive: true })
+    .select('_id userId fullName verificationStatus isActive')
+    .lean();
 
 const findByUserId = (userId) => withPopulates(Doctor.findOne({ userId }));
 
@@ -46,18 +73,18 @@ const updateRatingStats = (doctorId, { averageRating, reviewCount }) =>
 
 const searchPublic = ({ filter, sort, skip, limit }) =>
   Promise.all([
-    withPopulates(Doctor.find(filter)).sort(sort).skip(skip).limit(limit).lean(),
+    withPublicPopulates(Doctor.find(filter)).sort(sort).skip(skip).limit(limit).lean(),
     Doctor.countDocuments(filter),
   ]);
 
 const findVerifiedById = (id) =>
-  withPopulates(
+  withPublicPopulates(
     Doctor.findOne({ _id: id, verificationStatus: 'VERIFIED', isActive: true }),
   ).lean();
 
 const searchAdmin = ({ filter, sort, skip, limit }) =>
   Promise.all([
-    withPopulates(Doctor.find(filter)).sort(sort).skip(skip).limit(limit),
+    withPopulates(Doctor.find(filter)).sort(sort).skip(skip).limit(limit).lean(),
     Doctor.countDocuments(filter),
   ]);
 
@@ -65,6 +92,7 @@ const isValidObjectId = (value) => mongoose.Types.ObjectId.isValid(value);
 
 module.exports = {
   findById,
+  findVerifiedLeanById,
   findByUserId,
   findUserById,
   create,

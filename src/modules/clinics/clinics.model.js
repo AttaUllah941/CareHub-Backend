@@ -58,6 +58,7 @@ const clinicSchema = new mongoose.Schema(
 );
 
 clinicSchema.index({ location: '2dsphere' }, { sparse: true });
+clinicSchema.index({ doctorId: 1, isActive: 1 });
 
 const Clinic = mongoose.models.Clinic || mongoose.model('Clinic', clinicSchema);
 

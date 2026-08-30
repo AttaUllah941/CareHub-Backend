@@ -70,7 +70,18 @@ const resolveDoctorDetails = async (appointment) => {
   const doctorName = doctor?.fullName || 'Doctor';
   const doctorId = doctor?._id || appointment.doctorId;
 
-  const doctorUserRef = doctor?.userId?._id || doctor?.userId;
+  const populatedUser = doctor?.userId;
+  // Nested populate may already include email — skip an extra User round-trip when present.
+  if (populatedUser && typeof populatedUser === 'object' && populatedUser.email !== undefined) {
+    return {
+      doctorName,
+      doctorId,
+      doctorUserId: populatedUser._id?.toString() || null,
+      doctorEmail: populatedUser.email || '',
+    };
+  }
+
+  const doctorUserRef = populatedUser?._id || populatedUser;
   let doctorUserId = doctorUserRef?.toString() || null;
   let doctorEmail = '';
 
@@ -167,8 +178,8 @@ const createAppointment = async (payload, user) => {
     throw new NotFoundError('Doctor not found');
   }
 
-  const doctor = await doctorsRepository.findById(payload.doctorId);
-  if (!doctor || doctor.verificationStatus !== 'VERIFIED') {
+  const doctor = await doctorsRepository.findVerifiedLeanById(payload.doctorId);
+  if (!doctor) {
     throw new NotFoundError('Doctor not found');
   }
 

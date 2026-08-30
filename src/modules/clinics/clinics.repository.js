@@ -4,10 +4,10 @@ const Clinic = require('./clinics.model');
 const findById = (id) => Clinic.findById(id);
 
 const findActiveByDoctorId = (doctorId) =>
-  Clinic.find({ doctorId, isActive: true }).sort({ name: 1 });
+  Clinic.find({ doctorId, isActive: true }).sort({ name: 1 }).lean();
 
 const findActiveByDoctorIds = (doctorIds) =>
-  Clinic.find({ doctorId: { $in: doctorIds }, isActive: true }).sort({ name: 1 });
+  Clinic.find({ doctorId: { $in: doctorIds }, isActive: true }).sort({ name: 1 }).lean();
 
 const create = (data) => Clinic.create(data);
 

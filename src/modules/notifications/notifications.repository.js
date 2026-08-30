@@ -13,7 +13,7 @@ const findByUser = (userId, { skip = 0, limit = 20, unreadOnly = false } = {}) =
     filter.isRead = false;
   }
 
-  return Notification.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit);
+  return Notification.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean();
 };
 
 const countByUser = (userId, { unreadOnly = false } = {}) => {

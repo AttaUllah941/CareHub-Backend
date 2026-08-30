@@ -24,7 +24,8 @@ const findActiveByRoles = (roles, { skip = 0, limit = 100 } = {}) =>
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limit)
-    .select('_id email firstName');
+    .select('_id email firstName')
+    .lean();
 
 module.exports = {
   findByEmail,

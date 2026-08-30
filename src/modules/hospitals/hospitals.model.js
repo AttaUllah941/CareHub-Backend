@@ -42,6 +42,7 @@ const hospitalSchema = new mongoose.Schema(
 
 hospitalSchema.index({ citySlug: 1, slug: 1 }, { unique: true });
 hospitalSchema.index({ location: '2dsphere' }, { sparse: true });
+hospitalSchema.index({ doctorIds: 1, isActive: 1 });
 
 const Hospital = mongoose.models.Hospital || mongoose.model('Hospital', hospitalSchema);
 

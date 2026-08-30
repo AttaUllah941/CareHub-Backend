@@ -50,6 +50,10 @@ const appointmentSchema = new mongoose.Schema(
 );
 
 appointmentSchema.index({ patientId: 1, doctorId: 1, status: 1 });
+appointmentSchema.index({ doctorId: 1, scheduledAt: -1 });
+appointmentSchema.index({ patientId: 1, scheduledAt: -1 });
+appointmentSchema.index({ doctorId: 1, status: 1, scheduledAt: -1 });
+appointmentSchema.index({ patientId: 1, status: 1, scheduledAt: -1 });
 
 appointmentSchema.pre('save', function assignBookingRef(next) {
   if (!this.bookingRef) {

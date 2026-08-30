@@ -6,13 +6,13 @@ const findById = (id, { includeInactive = false } = {}) => {
   if (!includeInactive) {
     filter.isActive = true;
   }
-  return Lab.findOne(filter);
+  return Lab.findOne(filter).lean();
 };
 
 const findByIdAdmin = (id) => Lab.findById(id);
 
 const findPublic = (filter, { skip, limit, sort }) =>
-  Lab.find({ ...filter, isActive: true }).sort(sort).skip(skip).limit(limit);
+  Lab.find({ ...filter, isActive: true }).sort(sort).skip(skip).limit(limit).lean();
 
 const countPublic = (filter) => Lab.countDocuments({ ...filter, isActive: true });
 

@@ -10,8 +10,12 @@ const connectDatabase = async () => {
   try {
     await mongoose.connect(config.mongodb.uri, {
       maxPoolSize: config.mongodb.maxPoolSize,
+      minPoolSize: config.isProduction ? 2 : 0,
+      maxIdleTimeMS: 30000,
       serverSelectionTimeoutMS: 15000,
       socketTimeoutMS: 45000,
+      // Fail fast instead of buffering ops while disconnected (reduces hung first requests).
+      bufferCommands: false,
     });
 
     logger.info('MongoDB connected');

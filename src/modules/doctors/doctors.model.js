@@ -66,6 +66,8 @@ doctorSchema.index({ verificationStatus: 1, isActive: 1, city: 1 });
 doctorSchema.index({ specialtyIds: 1 });
 doctorSchema.index({ yearsOfExperience: -1 });
 doctorSchema.index({ consultationFee: 1 });
+doctorSchema.index({ fullName: 1 });
+doctorSchema.index({ averageRating: -1 });
 
 const Doctor = mongoose.models.Doctor || mongoose.model('Doctor', doctorSchema);
 
