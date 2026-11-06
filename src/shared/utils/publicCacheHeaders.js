@@ -13,7 +13,19 @@ const setPublicReferenceCacheHeaders = (res) => {
   res.removeHeader('Expires');
 };
 
+/** Short-lived cache for public search/listing results that change with bookings or approvals. */
+const PUBLIC_LISTING_CACHE_CONTROL = 'public, max-age=15, stale-while-revalidate=60';
+
+const setPublicListingCacheHeaders = (res) => {
+  res.set('Cache-Control', PUBLIC_LISTING_CACHE_CONTROL);
+  res.set('Vary', 'Accept-Encoding');
+  res.removeHeader('Pragma');
+  res.removeHeader('Expires');
+};
+
 module.exports = {
   PUBLIC_REF_CACHE_CONTROL,
+  PUBLIC_LISTING_CACHE_CONTROL,
   setPublicReferenceCacheHeaders,
+  setPublicListingCacheHeaders,
 };

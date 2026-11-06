@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { Appointment } = require('./appointments.model');
+const { Appointment, ACTIVE_STATUSES } = require('./appointments.model');
 
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 
@@ -20,6 +20,10 @@ const hasCompletedAppointment = (patientId, doctorId) =>
     status: 'completed',
   });
 
+/** True when the doctor has an accepted (confirmed/completed) appointment with the patient. */
+const hasCareRelationship = (patientId, doctorId) =>
+  Appointment.exists({ patientId, doctorId, status: { $in: ['confirmed', 'completed'] } });
+
 const findByPatientAndDoctor = (patientId, doctorId, { statuses } = {}) => {
   const filter = { patientId, doctorId };
   if (statuses?.length) {
@@ -35,10 +39,26 @@ const findById = (id) =>
 const findByBookingRef = (bookingRef) =>
   withListPopulates(Appointment.findOne({ bookingRef }));
 
-const updateById = (id, data) =>
-  withListPopulates(
-    Appointment.findByIdAndUpdate(id, data, { new: true, runValidators: true }),
+const findActiveSlot = (doctorId, scheduledAt) =>
+  Appointment.findOne({
+    doctorId,
+    scheduledAt,
+    status: { $in: ACTIVE_STATUSES },
+  })
+    .select('_id')
+    .lean();
+
+const updateById = (id, data) => {
+  const update = { ...data };
+  // Release the slot / pairing as soon as the appointment is no longer active.
+  if (update.status && !ACTIVE_STATUSES.includes(update.status)) {
+    update.$unset = { slotKey: 1, pairKey: 1 };
+  }
+
+  return withListPopulates(
+    Appointment.findByIdAndUpdate(id, update, { new: true, runValidators: true }),
   );
+};
 
 const create = (data) => Appointment.create(data);
 
@@ -85,7 +105,9 @@ const countByPatientId = (patientId, { status } = {}) => {
 module.exports = {
   isValidObjectId,
   hasCompletedAppointment,
+  hasCareRelationship,
   findByPatientAndDoctor,
+  findActiveSlot,
   findById,
   findByBookingRef,
   create,

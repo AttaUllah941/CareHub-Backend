@@ -1,5 +1,6 @@
 const { NotFoundError } = require('../../core/errors/AppError');
 const { parsePaginationQuery, buildPaginationMeta } = require('../../core/utils/pagination.util');
+const { invalidateAuthCache } = require('../../core/middleware/auth.middleware');
 const usersRepository = require('../users/users.repository');
 const adminRepository = require('./admin.repository');
 
@@ -103,6 +104,8 @@ const updateUserStatus = async (id, isActive) => {
   if (!user) {
     throw new NotFoundError('User not found');
   }
+
+  invalidateAuthCache(id);
 
   return { user: toUserResponse(user) };
 };

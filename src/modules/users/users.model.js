@@ -11,6 +11,8 @@ const userSchema = new mongoose.Schema(
     role: { type: String, enum: USER_ROLES, required: true },
     isActive: { type: Boolean, default: true },
     isEmailVerified: { type: Boolean, default: false },
+    /** Bumped on logout / password reset to revoke every outstanding refresh token. */
+    tokenVersion: { type: Number, default: 0 },
   },
   { timestamps: true },
 );
