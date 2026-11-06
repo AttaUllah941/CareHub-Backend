@@ -3,6 +3,7 @@ const {
   NotFoundError,
   ConflictError,
 } = require('../../core/errors/AppError');
+const { escapeRegex } = require('../../shared/utils/regex');
 const { slugify } = require('../../shared/utils/slugify');
 const { parsePaginationQuery, buildPaginationMeta } = require('../../core/utils/pagination.util');
 const doctorsRepository = require('../doctors/doctors.repository');
@@ -113,7 +114,7 @@ const buildPublicListFilter = (query) => {
   const filter = {};
 
   if (query.city) {
-    filter.city = new RegExp(`^${query.city.trim()}$`, 'i');
+    filter.city = new RegExp(`^${escapeRegex(query.city.trim())}$`, 'i');
   }
 
   if (query.citySlug) {

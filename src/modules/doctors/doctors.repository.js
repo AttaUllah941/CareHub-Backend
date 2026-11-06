@@ -1,5 +1,8 @@
 const mongoose = require('mongoose');
 const { Doctor } = require('./doctors.model');
+// Models referenced by populate() below must be registered even when loaded outside the full app.
+require('../specialties/specialties.model');
+require('../languages/languages.model');
 const usersRepository = require('../users/users.repository');
 
 /** Full populate for portal/admin responses that need contact + catalog metadata. */

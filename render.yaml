@@ -60,6 +60,12 @@ services:
         sync: false
       - key: CLOUDINARY_API_SECRET
         sync: false
+      # CareHub AI assistant — without OPENAI_API_KEY the chat shows "not set up" (nothing else is affected).
+      # After the first deploy, run `npm run ai:ingest` once (Render shell) to build the knowledge index.
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: AI_MODEL
+        value: gpt-4o-mini
       # Email delivery (required for forgot-password emails)
       - key: SMTP_HOST
         sync: false

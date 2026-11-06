@@ -1,4 +1,5 @@
 require('dotenv').config();
+const path = require('path');
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -102,6 +103,30 @@ const config = Object.freeze({
   redis: {
     url: process.env.REDIS_URL || 'redis://127.0.0.1:6379',
     enabled: process.env.REDIS_ENABLED !== 'false',
+  },
+
+  /** AI assistant — provider credentials and limits live in the environment only. */
+  ai: {
+    provider: process.env.AI_PROVIDER || 'openai',
+    apiKey: process.env.OPENAI_API_KEY || '',
+    baseUrl: (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, ''),
+    model: process.env.AI_MODEL || 'gpt-4o-mini',
+    embeddingModel: process.env.AI_EMBEDDING_MODEL || 'text-embedding-3-small',
+    /** Smaller vectors = less storage and faster search; supported by text-embedding-3-* models. */
+    embeddingDimensions: parseInt(process.env.AI_EMBEDDING_DIMENSIONS, 10) || 512,
+    rag: {
+      topK: parseInt(process.env.AI_RAG_TOP_K, 10) || 4,
+      /** Cosine similarity floor for semantic retrieval; below it we answer "no source found". */
+      minScore: parseFloat(process.env.AI_RAG_MIN_SCORE) || 0.3,
+      knowledgeDir: process.env.AI_KNOWLEDGE_DIR || path.resolve(__dirname, '../../knowledge'),
+    },
+    timeoutMs: parseInt(process.env.AI_TIMEOUT_MS, 10) || 45000,
+    maxToolIterations: parseInt(process.env.AI_MAX_TOOL_ITERATIONS, 10) || 5,
+    historyMessages: parseInt(process.env.AI_HISTORY_MESSAGES, 10) || 12,
+    maxMessageChars: parseInt(process.env.AI_MAX_MESSAGE_CHARS, 10) || 2000,
+    retentionDays: parseInt(process.env.AI_RETENTION_DAYS, 10) || 90,
+    confirmationTtlMs: parseInt(process.env.AI_CONFIRMATION_TTL_MS, 10) || 10 * 60 * 1000,
+    chatRatePerMinute: parseInt(process.env.AI_CHAT_RATE_PER_MINUTE, 10) || 20,
   },
 
   smtp: {

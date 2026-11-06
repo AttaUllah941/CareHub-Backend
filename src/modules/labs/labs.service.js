@@ -4,6 +4,7 @@ const {
   ConflictError,
   ForbiddenError,
 } = require('../../core/errors/AppError');
+const { escapeRegex } = require('../../shared/utils/regex');
 const { UserRole } = require('../../shared/enums/userRole.enum');
 const { slugify } = require('../../shared/utils/slugify');
 const { parsePaginationQuery, buildPaginationMeta } = require('../../core/utils/pagination.util');
@@ -107,7 +108,7 @@ const buildPublicLabFilter = (query) => {
   const filter = {};
 
   if (query.city) {
-    filter.city = new RegExp(`^${query.city.trim()}$`, 'i');
+    filter.city = new RegExp(`^${escapeRegex(query.city.trim())}$`, 'i');
   }
 
   if (query.citySlug) {

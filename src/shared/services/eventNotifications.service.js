@@ -2,6 +2,14 @@ const { enqueueEmail } = require('../../jobs/queues/email.queue');
 const notificationsService = require('../../modules/notifications/notifications.service');
 const config = require('../../config');
 
+const escapeHtml = (value) =>
+  String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
 const buildFrontendUrl = (path) => {
   const base = config.frontend.url.replace(/\/$/, '');
   return `${base}${path.startsWith('/') ? path : `/${path}`}`;
@@ -23,7 +31,7 @@ const sendPasswordResetEmail = async ({ email, firstName, resetToken }) => {
       to: email,
       subject: 'Reset your CareHub password',
       text: `Hi ${firstName},\n\nWe received a request to reset your password. Use this link within 1 hour:\n\n${resetUrl}\n\nIf you did not request this, you can ignore this email.\n\n— CareHub`,
-      html: `<p>Hi ${firstName},</p><p>We received a request to reset your password. Use this link within 1 hour:</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>If you did not request this, you can ignore this email.</p><p>— CareHub</p>`,
+      html: `<p>Hi ${escapeHtml(firstName)},</p><p>We received a request to reset your password. Use this link within 1 hour:</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>If you did not request this, you can ignore this email.</p><p>— CareHub</p>`,
     },
     { waitForDelivery: true },
   );

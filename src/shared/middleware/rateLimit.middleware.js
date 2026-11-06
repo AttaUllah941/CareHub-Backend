@@ -47,7 +47,36 @@ const anonymousUploadLimiter = rateLimit({
   },
 });
 
+/** Per-user limiter for AI calls (runs after authenticate, so req.user is verified). */
+const perUser = (req) => req.user?.id || req.ip;
+
+const aiChatLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: config.ai.chatRatePerMinute,
+  keyGenerator: perUser,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: 'You are sending messages too quickly. Please wait a moment.',
+  },
+});
+
+const aiActionLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  keyGenerator: perUser,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: 'Too many requests. Please wait a moment.',
+  },
+});
+
 module.exports = {
+  aiChatLimiter,
+  aiActionLimiter,
   globalRateLimiter,
   authLimiter,
   anonymousUploadLimiter,

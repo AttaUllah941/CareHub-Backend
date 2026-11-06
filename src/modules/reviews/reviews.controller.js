@@ -1,4 +1,4 @@
-const { body, param } = require('express-validator');
+const { body } = require('express-validator');
 const { HttpStatus } = require('../../shared/constants/httpStatus.constants');
 const { successResponse } = require('../../core/utils/apiResponse');
 const asyncHandler = require('../../core/utils/asyncHandler');

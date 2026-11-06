@@ -48,6 +48,16 @@ const findActiveSlot = (doctorId, scheduledAt) =>
     .select('_id')
     .lean();
 
+/** Active (pending/confirmed) appointments of a doctor within [from, to). */
+const findActiveScheduledBetween = (doctorId, from, to) =>
+  Appointment.find({
+    doctorId,
+    status: { $in: ACTIVE_STATUSES },
+    scheduledAt: { $gte: from, $lt: to },
+  })
+    .select('scheduledAt')
+    .lean();
+
 const updateById = (id, data) => {
   const update = { ...data };
   // Release the slot / pairing as soon as the appointment is no longer active.
@@ -108,6 +118,7 @@ module.exports = {
   hasCareRelationship,
   findByPatientAndDoctor,
   findActiveSlot,
+  findActiveScheduledBetween,
   findById,
   findByBookingRef,
   create,

@@ -8,6 +8,9 @@ const { loadDoctorProfile } = require('../../shared/middleware/resourceOwner.mid
 
 const router = express.Router();
 
+/** Public: bookable slots for a doctor on a date (?date=YYYY-MM-DD). */
+router.get('/availability/:doctorId', schedulesController.getAvailability);
+
 router.post(
   '/',
   authenticate,

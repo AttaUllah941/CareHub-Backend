@@ -45,8 +45,9 @@ Stack: **Netlify** (frontend) · **Render** (API) · **MongoDB Atlas** (database
 > returns success (for security), but nothing is mailed. On local/dev it also returns a
 > clickable reset link in the UI when SMTP is missing.
 
-5. Deploy → copy URL, e.g. `https://carehub-api.onrender.com`
-6. Open `https://carehub-api.onrender.com/health` — should return success
+5. **(Optional) CareHub AI:** set `OPENAI_API_KEY` (and optionally `AI_MODEL`). After the first deploy, open a Render shell and run `npm run ai:ingest` once, and again whenever `knowledge/*.md` changes. Review the health articles in `knowledge/` medically before enabling the assistant for real patients. See `docs/AI.md`.
+6. Deploy → copy URL, e.g. `https://carehub-api.onrender.com`
+7. Open `https://carehub-api.onrender.com/health` — should return success
 
 > Free Render services sleep after ~15 minutes idle; the first request can take ~30–60s.
 > To keep the API warm, ping `/health` every 10–14 minutes (UptimeRobot, cron-job.org, or

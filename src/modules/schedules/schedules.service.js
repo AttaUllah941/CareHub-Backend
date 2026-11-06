@@ -1,6 +1,11 @@
 const AppError = require('../../shared/errors/AppError');
 const doctorContextService = require('../../shared/services/doctorContext.service');
-const { generateTimeSlots, normalizeDateString } = require('../../shared/utils/timeSlots.util');
+const {
+  generateTimeSlots,
+  normalizeDateString,
+  slotToInstant,
+} = require('../../shared/utils/timeSlots.util');
+const { DEFAULT_TIME_SLOTS } = require('../doctors/doctors.public.mapper');
 const doctorsRepository = require('../doctors/doctors.repository');
 const appointmentsRepository = require('../appointments/appointments.repository');
 const clinicsRepository = require('../clinics/clinics.repository');
@@ -21,12 +26,18 @@ const toScheduleResponse = (schedule) => ({
   updatedAt: schedule.updatedAt?.toISOString(),
 });
 
+/**
+ * Slots for a doctor on a given date.
+ * - Uses the doctor's configured schedules; falls back to the platform default slot list
+ *   (the same list the booking modals offer) when none are configured.
+ * - Marks slots that are already booked (pending/confirmed) or in the past as unavailable.
+ */
 const getAvailability = async (doctorId, dateQuery) => {
   if (!schedulesRepository.isValidObjectId(doctorId)) {
     throw new AppError('Doctor not found', 404);
   }
 
-  const doctor = await doctorsRepository.findById(doctorId);
+  const doctor = await doctorsRepository.findVerifiedLeanById(doctorId);
   if (!doctor) {
     throw new AppError('Doctor not found', 404);
   }
@@ -38,38 +49,65 @@ const getAvailability = async (doctorId, dateQuery) => {
 
   const dayOfWeek = new Date(`${dateString}T00:00:00.000Z`).getUTCDay();
   const schedules = await schedulesRepository.findActiveForDoctorAndDate(
-    doctorId,
+    doctor._id,
     dayOfWeek,
     dateString,
   );
 
-  const generatedSlots = schedules.flatMap((schedule) =>
-    generateTimeSlots(schedule.startTime, schedule.endTime, schedule.slotDurationMinutes).map(
-      (timeSlot) => ({
+  const baseSlots = schedules.length
+    ? schedules.flatMap((schedule) =>
+        generateTimeSlots(schedule.startTime, schedule.endTime, schedule.slotDurationMinutes).map(
+          (timeSlot) => ({
+            timeSlot,
+            consultationType: schedule.consultationType,
+            clinicId: schedule.clinicId ? schedule.clinicId.toString() : null,
+          }),
+        ),
+      )
+    : DEFAULT_TIME_SLOTS.map((timeSlot) => ({
         timeSlot,
-        consultationType: schedule.consultationType,
-        clinicId: schedule.clinicId ? schedule.clinicId.toString() : null,
-      }),
-    ),
-  );
+        consultationType: 'any',
+        clinicId: null,
+      }));
 
-  const bookedAppointments = await appointmentsRepository.findBookedSlotsByDoctorAndDate(
-    doctorId,
-    dateString,
+  const dayStart = slotToInstant(dateString, '12:00 AM');
+  const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+  const booked = await appointmentsRepository.findActiveScheduledBetween(
+    doctor._id,
+    dayStart,
+    dayEnd,
   );
-  const bookedSet = new Set(bookedAppointments.map((appointment) => appointment.timeSlot));
+  const bookedInstants = new Set(booked.map((appointment) => appointment.scheduledAt.toISOString()));
+  const now = new Date();
 
-  const availableSlots = generatedSlots.filter((slot) => !bookedSet.has(slot.timeSlot));
+  const seen = new Set();
+  const slots = [];
+  for (const slot of baseSlots) {
+    const instant = slotToInstant(dateString, slot.timeSlot);
+    if (!instant) continue;
 
-  const uniqueTimeSlots = [...new Set(availableSlots.map((slot) => slot.timeSlot))].sort(
-    (a, b) => a.localeCompare(b),
-  );
+    const key = `${slot.timeSlot}|${slot.consultationType}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    slots.push({
+      ...slot,
+      scheduledAt: instant.toISOString(),
+      available: instant > now && !bookedInstants.has(instant.toISOString()),
+    });
+  }
+  slots.sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
+
+  const timeSlots = [
+    ...new Set(slots.filter((slot) => slot.available).map((slot) => slot.timeSlot)),
+  ];
 
   return {
-    doctorId,
+    doctorId: doctor._id.toString(),
     date: dateString,
-    timeSlots: uniqueTimeSlots,
-    slots: availableSlots,
+    source: schedules.length ? 'schedule' : 'default',
+    timeSlots,
+    slots,
   };
 };
 
