@@ -9,6 +9,7 @@ const {
 const config = require('../../config');
 const logger = require('../../core/utils/logger');
 const { generateTokens, verifyRefreshToken } = require('../../core/utils/token.utils');
+const { invalidateAuthCache } = require('../../core/middleware/auth.middleware');
 const { PUBLIC_REGISTRATION_ROLES, UserRole } = require('../../shared/enums/userRole.enum');
 const usersRepository = require('../users/users.repository');
 const doctorApplicationsRepository = require('../doctor-applications/doctor-applications.repository');
@@ -39,6 +40,10 @@ const register = async (payload) => {
     throw new BadRequestError('Invalid registration role');
   }
 
+  if (payload.role === UserRole.DOCTOR) {
+    throw new BadRequestError('Doctors must apply via the doctor application form');
+  }
+
   const existingUser = await usersRepository.findByEmail(email);
   if (existingUser) {
     throw new ConflictError('An account with this email already exists');
@@ -62,13 +67,7 @@ const register = async (payload) => {
     firstName: user.firstName,
   });
 
-  const tokens = generateTokens(user._id.toString(), user.role);
-
-  return {
-    user: toUserResponse(user),
-    accessToken: tokens.accessToken,
-    refreshToken: tokens.refreshToken,
-  };
+  return buildAuthResponse(user);
 };
 
 const resolveInactiveAccountError = async (user) => {
@@ -113,32 +112,8 @@ const login = async ({ email, password }) => {
   return buildAuthResponse(user);
 };
 
-const refresh = async ({ refreshToken }) => {
-  if (!refreshToken) {
-    throw new UnauthorizedError('Refresh token is required');
-  }
-
-  let decoded;
-  try {
-    decoded = verifyRefreshToken(refreshToken);
-  } catch {
-    throw new UnauthorizedError('Invalid or expired refresh token');
-  }
-
-  const user = await usersRepository.findById(decoded.sub);
-  if (!user) {
-    throw new UnauthorizedError('Invalid or expired refresh token');
-  }
-
-  if (!user.isActive) {
-    throw new UnauthorizedError('Account is inactive');
-  }
-
-  return buildAuthResponse(user);
-};
-
 const buildAuthResponse = (user) => {
-  const tokens = generateTokens(user._id.toString(), user.role);
+  const tokens = generateTokens(user._id.toString(), user.role, user.tokenVersion ?? 0);
 
   return {
     user: toUserResponse(user),
@@ -216,7 +191,11 @@ const resetPassword = async ({ token, password }) => {
 
   const passwordHash = await bcrypt.hash(password, config.bcrypt.saltRounds);
 
-  await usersRepository.updateById(resetRecord.userId, { passwordHash });
+  await usersRepository.updateById(resetRecord.userId, {
+    passwordHash,
+    $inc: { tokenVersion: 1 },
+  });
+  invalidateAuthCache(resetRecord.userId);
   await authRepository.markPasswordResetTokenUsed(resetRecord._id);
 
   return { message: 'Password has been reset successfully' };
@@ -239,16 +218,24 @@ const refreshSession = async (refreshToken) => {
     throw new UnauthorizedError('Account is inactive or no longer exists');
   }
 
-  const tokens = generateTokens(user._id.toString(), user.role);
+  if ((decoded.tv ?? 0) !== (user.tokenVersion ?? 0)) {
+    throw new UnauthorizedError('Session has been revoked. Please sign in again');
+  }
 
-  return {
-    user: toUserResponse(user),
-    accessToken: tokens.accessToken,
-    refreshToken: tokens.refreshToken,
-  };
+  return buildAuthResponse(user);
 };
 
-const logout = async () => ({ message: 'Logged out successfully' });
+const revokeUserSessions = async (userId) => {
+  await usersRepository.updateById(userId, { $inc: { tokenVersion: 1 } });
+  invalidateAuthCache(userId);
+};
+
+const logout = async (userId) => {
+  if (userId) {
+    await revokeUserSessions(userId);
+  }
+  return { message: 'Logged out successfully' };
+};
 
 const changePassword = async (userId, { currentPassword, newPassword }) => {
   const user = await usersRepository.findById(userId);
@@ -270,7 +257,6 @@ const changePassword = async (userId, { currentPassword, newPassword }) => {
 module.exports = {
   register,
   login,
-  refresh,
   getMe,
   requestPasswordReset,
   resetPassword,

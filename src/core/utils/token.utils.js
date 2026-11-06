@@ -4,8 +4,8 @@ const config = require('../../config');
 /**
  * Generates access and refresh JWT tokens for authenticated sessions.
  */
-const generateTokens = (userId, role) => {
-  const payload = { sub: userId, role };
+const generateTokens = (userId, role, tokenVersion = 0) => {
+  const payload = { sub: userId, role, tv: tokenVersion };
 
   const accessToken = jwt.sign(payload, config.jwt.secret, {
     expiresIn: config.jwt.expiresIn,

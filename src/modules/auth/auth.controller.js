@@ -30,8 +30,8 @@ const refresh = async (req, res) => {
   res.json({ success: true, message: 'Token refreshed', data: result });
 };
 
-const logout = async (_req, res) => {
-  const result = await authService.logout();
+const logout = async (req, res) => {
+  const result = await authService.logout(req.user.id);
   res.json({ success: true, message: result.message, data: result });
 };
 
@@ -47,7 +47,6 @@ module.exports = {
   getMe,
   requestPasswordReset,
   resetPassword,
-  refresh,
   logout,
   changePassword,
 };

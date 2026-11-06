@@ -3,6 +3,8 @@ const { generateBookingRef } = require('../../shared/utils/bookingRef.util');
 
 const APPOINTMENT_STATUSES = ['pending', 'confirmed', 'completed', 'cancelled', 'rejected'];
 const CONSULTATION_TYPES = ['video', 'clinic'];
+/** Statuses that occupy a doctor's time slot / a patient–doctor pairing. */
+const ACTIVE_STATUSES = ['pending', 'confirmed'];
 
 const appointmentSchema = new mongoose.Schema(
   {
@@ -30,6 +32,13 @@ const appointmentSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    /**
+     * Uniqueness guards enforced by sparse unique indexes. Only set while the
+     * appointment is active (pending/confirmed) and removed when it ends, which
+     * makes double-booking impossible even under concurrent requests.
+     */
+    slotKey: { type: String, unique: true, sparse: true },
+    pairKey: { type: String, unique: true, sparse: true },
     patientName: { type: String, trim: true, default: '' },
     patientEmail: { type: String, trim: true, lowercase: true, default: '' },
     patientPhone: { type: String, trim: true, default: '' },
@@ -65,4 +74,4 @@ appointmentSchema.pre('save', function assignBookingRef(next) {
 const Appointment =
   mongoose.models.Appointment || mongoose.model('Appointment', appointmentSchema);
 
-module.exports = { Appointment, APPOINTMENT_STATUSES, CONSULTATION_TYPES };
+module.exports = { Appointment, APPOINTMENT_STATUSES, CONSULTATION_TYPES, ACTIVE_STATUSES };

@@ -35,8 +35,21 @@ const writeLimiter = rateLimit({
   },
 });
 
+/** Anonymous document uploads (doctor sign-up) — keep abuse of storage low. */
+const anonymousUploadLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: 'Too many uploads, please try again later.',
+  },
+});
+
 module.exports = {
   globalRateLimiter,
   authLimiter,
+  anonymousUploadLimiter,
   writeLimiter,
 };

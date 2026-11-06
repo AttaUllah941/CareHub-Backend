@@ -1,6 +1,7 @@
 const { successResponse } = require('../../core/utils/apiResponse');
 const asyncHandler = require('../../core/utils/asyncHandler');
 const doctorsService = require('./doctors.service');
+const { setPublicListingCacheHeaders } = require('../../shared/utils/publicCacheHeaders');
 
 const setNoCacheHeaders = (res) => {
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -9,7 +10,7 @@ const setNoCacheHeaders = (res) => {
 };
 
 const searchPublic = asyncHandler(async (req, res) => {
-  setNoCacheHeaders(res);
+  setPublicListingCacheHeaders(res);
   const data = await doctorsService.searchPublicDoctors(req.query);
   successResponse(res, data, 'Doctors retrieved');
 });

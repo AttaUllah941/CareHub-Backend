@@ -40,7 +40,7 @@ const router = Router();
 router.get('/', (_req, res) => {
   successResponse(res, {
     name: 'CareHub API',
-    version: '1.0.0',
+    version: require('../../package.json').version,
     status: 'ready',
     modules: {
       implemented: [
@@ -63,7 +63,7 @@ router.get('/', (_req, res) => {
         'prescriptions',
         'health-questions',
       ],
-      planned: ['users'],
+      planned: [],
     },
   }, 'CareHub API is ready');
 });

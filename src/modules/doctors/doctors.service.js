@@ -5,6 +5,7 @@ const {
 } = require('../../core/errors/AppError');
 const { parsePaginationQuery, buildPaginationMeta } = require('../../core/utils/pagination.util');
 const { Specialty } = require('../specialties/specialties.model');
+const { createMemoryCache } = require('../../shared/utils/memoryCache');
 const { User } = require('../users/users.model');
 const doctorsRepository = require('./doctors.repository');
 const clinicsRepository = require('../clinics/clinics.repository');
@@ -13,6 +14,14 @@ const {
   toDoctorSearchResult,
   toDoctorDetailProfile,
 } = require('./doctors.public.mapper');
+
+/** Specialty slug → _id lookups repeat on every search; the catalog changes rarely. */
+const specialtyLookupCache = createMemoryCache({ defaultTtlMs: 5 * 60 * 1000 });
+
+const findActiveSpecialtyBySlug = (slug) =>
+  specialtyLookupCache.wrap(slug, () =>
+    Specialty.findOne({ slug, isActive: true }).select('_id').lean(),
+  );
 
 const groupClinicsByDoctorId = (clinics) => {
   const map = new Map();
@@ -186,7 +195,7 @@ const buildPublicSearchFilter = async (query) => {
 
   const specialtySlug = resolveSpecialtySlug(query.specialtySlug || query.specialty);
   if (specialtySlug) {
-    const specialty = await Specialty.findOne({ slug: specialtySlug, isActive: true }).lean();
+    const specialty = await findActiveSpecialtyBySlug(specialtySlug);
     if (!specialty) {
       return null;
     }
@@ -289,7 +298,14 @@ const searchPublicDoctors = async (query) => {
     };
   }
 
-  const [doctors, total] = await doctorsRepository.searchPublic({ filter, sort, skip, limit });
+  // `_id` tie-breaker keeps pagination stable when many doctors share a sort value.
+  const stableSort = { ...sort, _id: 1 };
+  const [doctors, total] = await doctorsRepository.searchPublic({
+    filter,
+    sort: stableSort,
+    skip,
+    limit,
+  });
   const doctorIds = doctors.map((doctor) => doctor._id);
   const [allClinics, allHospitals] = await Promise.all([
     clinicsRepository.findActiveByDoctorIds(doctorIds),

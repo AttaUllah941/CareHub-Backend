@@ -1,47 +1,80 @@
 const { UnauthorizedError, ForbiddenError } = require('../errors/AppError');
 const { verifyAccessToken } = require('../utils/token.utils');
+const { createMemoryCache } = require('../../shared/utils/memoryCache');
+const { User } = require('../../modules/users/users.model');
 
 /**
- * JWT authentication middleware.
- * Validates Bearer token and attaches decoded user to req.user.
+ * Short-lived cache of "is this account still active?" so a deactivated user is
+ * locked out within seconds without adding a DB round-trip to every request.
  */
-const authenticate = async (req, _res, next) => {
-  try {
-    const authHeader = req.headers.authorization;
+const ACTIVE_STATUS_TTL_MS = 30 * 1000;
+const activeStatusCache = createMemoryCache({ defaultTtlMs: ACTIVE_STATUS_TTL_MS });
 
-    if (!authHeader?.startsWith('Bearer ')) {
-      return next(new UnauthorizedError('Access token required'));
-    }
+const invalidateAuthCache = (userId) => {
+  if (userId) activeStatusCache.del(String(userId));
+};
 
-    const token = authHeader.split(' ')[1];
-    const decoded = verifyAccessToken(token);
+const isAccountActive = (userId) =>
+  activeStatusCache.wrap(String(userId), async () => {
+    const user = await User.findById(userId).select('isActive').lean();
+    return Boolean(user?.isActive);
+  });
 
-    req.user = { id: decoded.sub, role: decoded.role };
-    next();
-  } catch {
-    next(new UnauthorizedError('Invalid or expired token'));
-  }
+const extractBearerToken = (req) => {
+  const authHeader = req.headers.authorization;
+  return authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
 };
 
 /**
- * Optional JWT authentication — attaches req.user when a valid Bearer token is present.
+ * JWT authentication middleware.
+ * Validates Bearer token, confirms the account is still active, and attaches
+ * the decoded user to req.user.
+ */
+const authenticate = async (req, _res, next) => {
+  const token = extractBearerToken(req);
+  if (!token) {
+    return next(new UnauthorizedError('Access token required'));
+  }
+
+  let decoded;
+  try {
+    decoded = verifyAccessToken(token);
+  } catch {
+    return next(new UnauthorizedError('Invalid or expired token'));
+  }
+
+  try {
+    if (!(await isAccountActive(decoded.sub))) {
+      return next(new UnauthorizedError('Account is inactive or no longer exists'));
+    }
+  } catch (error) {
+    return next(error);
+  }
+
+  req.user = { id: decoded.sub, role: decoded.role };
+  return next();
+};
+
+/**
+ * Optional JWT authentication — attaches req.user when a valid Bearer token
+ * for an active account is present; otherwise continues as a guest.
  */
 const optionalAuthenticate = async (req, _res, next) => {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader?.startsWith('Bearer ')) {
+  const token = extractBearerToken(req);
+  if (!token) {
     return next();
   }
 
   try {
-    const token = authHeader.split(' ')[1];
     const decoded = verifyAccessToken(token);
-    req.user = { id: decoded.sub, role: decoded.role };
+    if (await isAccountActive(decoded.sub)) {
+      req.user = { id: decoded.sub, role: decoded.role };
+    }
   } catch {
     // Ignore invalid tokens for optional auth routes
   }
 
-  next();
+  return next();
 };
 
 /**
@@ -60,4 +93,4 @@ const authorize = (...allowedRoles) => (req, _res, next) => {
   next();
 };
 
-module.exports = { authenticate, optionalAuthenticate, authorize };
+module.exports = { authenticate, optionalAuthenticate, authorize, invalidateAuthCache };

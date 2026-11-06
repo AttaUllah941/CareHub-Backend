@@ -1,6 +1,7 @@
-const { BadRequestError } = require('../../core/errors/AppError');
+const { BadRequestError, ForbiddenError } = require('../../core/errors/AppError');
 const { parsePaginationQuery, buildPaginationMeta } = require('../../core/utils/pagination.util');
 const usersRepository = require('../users/users.repository');
+const appointmentsRepository = require('../appointments/appointments.repository');
 const prescriptionsRepository = require('./prescriptions.repository');
 
 const toPrescriptionResponse = (prescription) => ({
@@ -45,6 +46,13 @@ const createForDoctor = async (doctor, payload) => {
     const patient = await usersRepository.findById(payload.patientId);
     if (!patient) {
       throw new BadRequestError('Patient not found');
+    }
+
+    const related = await appointmentsRepository.hasCareRelationship(patient._id, doctor._id);
+    if (!related) {
+      throw new ForbiddenError(
+        'You can only prescribe to patients with a confirmed or completed appointment with you',
+      );
     }
 
     patientId = patient._id;

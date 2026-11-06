@@ -2,7 +2,7 @@
 
 Node.js + Express + MongoDB API for the [CareHub](../CareHub-frontend) Angular frontend.
 
-This repository has been reset to a **clean foundation**. Business modules will be implemented incrementally to match the frontend.
+All planned modules are implemented (auth, doctors, appointments, hospitals, labs, surgeries, medicines, reviews, prescriptions, notifications, admin, uploads).
 
 ## Quick start
 
@@ -71,14 +71,13 @@ Matches the Angular frontend envelope:
 { "success": false, "message": "...", "errors": [{ "field": "...", "message": "..." }] }
 ```
 
-## Planned modules (implementation order)
+## Security notes
 
-1. **auth** — register, login, refresh, logout, `/me`, password reset
-2. **specialties** + **languages** — reference data
-3. **doctors** — public search & detail (frontend already wired)
-4. **appointments** — clinic & video booking
-5. **hospitals**, **labs**, **surgeries**, **medicines**
-6. **reviews**, **admin**, **uploads**
+- Access tokens are short-lived (15m); `authenticate` also verifies the account is still active (30s cache), so deactivating a user takes effect almost immediately.
+- Refresh tokens carry a `tv` (token version). Logout and password reset bump `User.tokenVersion`, revoking all outstanding refresh tokens.
+- Appointments use sparse unique `slotKey` / `pairKey` indexes (set only while pending/confirmed) to prevent double-booking under concurrency.
+- Doctors register through `POST /doctor-applications`; `/auth/register` rejects the DOCTOR role.
+- Anonymous `POST /uploads/application` is rate-limited to 15 uploads/hour/IP.
 
 ## Scripts
 

@@ -207,11 +207,18 @@ const createAppointment = async (payload, user) => {
     throw new ConflictError('An appointment with the selected doctor already exists.');
   }
 
+  const slotTaken = await appointmentsRepository.findActiveSlot(doctor._id, scheduledAt);
+  if (slotTaken) {
+    throw new ConflictError('This time slot is no longer available. Please choose another time.');
+  }
+
   let appointment;
   try {
     appointment = await appointmentsRepository.create({
       doctorId: doctor._id,
       patientId,
+      slotKey: `${doctor._id}_${scheduledAt.toISOString()}`,
+      pairKey: `${doctor._id}_${patientId}`,
       scheduledAt,
       patientName,
       patientEmail,
@@ -221,6 +228,11 @@ const createAppointment = async (payload, user) => {
     });
   } catch (error) {
     if (error.code === 11000) {
+      if (error.keyPattern?.slotKey) {
+        throw new ConflictError(
+          'This time slot is no longer available. Please choose another time.',
+        );
+      }
       throw new ConflictError('An appointment with the selected doctor already exists.');
     }
     throw error;
