@@ -29,6 +29,15 @@ const connectDatabase = async () => {
     });
   } catch (error) {
     logger.error('MongoDB connection failed:', error);
+    if (error.code === 'ENOTFOUND' || error.syscall === 'querySrv') {
+      logger.error(
+        'Hint: the MongoDB host in MONGODB_URI does not resolve. Copy the current connection string from Atlas (Connect → Drivers) into the MONGODB_URI environment variable.',
+      );
+    } else if (/auth/i.test(error.message)) {
+      logger.error('Hint: MongoDB rejected the credentials. Check the database user/password in MONGODB_URI.');
+    } else if (error.name === 'MongooseServerSelectionError') {
+      logger.error('Hint: could not reach MongoDB. In Atlas → Network Access allow 0.0.0.0/0 (Render uses changing IPs).');
+    }
     process.exit(1);
   }
 };
