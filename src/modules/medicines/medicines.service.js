@@ -165,6 +165,33 @@ const getPharmacyAdminOrThrow = async (id) => {
 const isAdmin = (user) =>
   user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN;
 
+// --- Public pharmacies ---
+
+const listPublicPharmacies = async (query) => {
+  const { page, limit, skip, sort } = parsePaginationQuery(query, PHARMACY_SORT_FIELDS);
+  const filter = {};
+
+  if (query.city?.trim()) {
+    const escaped = query.city.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    filter.city = new RegExp(`^${escaped}$`, 'i');
+  }
+
+  if (query.search?.trim()) {
+    const escaped = query.search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    filter.name = new RegExp(escaped, 'i');
+  }
+
+  const [pharmacies, total] = await Promise.all([
+    pharmaciesRepository.findPublic(filter, { skip, limit, sort }),
+    pharmaciesRepository.countPublic(filter),
+  ]);
+
+  return {
+    pharmacies: pharmacies.map(toPharmacySummary),
+    pagination: buildPaginationMeta(page, limit, total),
+  };
+};
+
 // --- Public medicines ---
 
 const listPublicMedicines = async (query) => {
@@ -469,6 +496,35 @@ const createOrder = async (payload, user) => {
   }
 };
 
+/** Admin: search all orders by status, order reference or creation date range. */
+const listAdminOrders = async (query) => {
+  const { page, limit, skip, sort } = parsePaginationQuery(query, ORDER_SORT_FIELDS);
+  const filter = {};
+
+  if (query.status) filter.status = query.status;
+
+  if (query.search?.trim()) {
+    const escaped = query.search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    filter.orderRef = new RegExp(escaped, 'i');
+  }
+
+  if (query.from || query.to) {
+    filter.createdAt = {};
+    if (query.from) filter.createdAt.$gte = new Date(query.from);
+    if (query.to) filter.createdAt.$lte = new Date(query.to);
+  }
+
+  const [orders, total] = await Promise.all([
+    medicineOrdersRepository.findAll(filter, { skip, limit, sort }),
+    medicineOrdersRepository.countAll(filter),
+  ]);
+
+  return {
+    orders: orders.map(toOrderResponse),
+    pagination: buildPaginationMeta(page, limit, total),
+  };
+};
+
 const listMyOrders = async (user, query) => {
   const { page, limit, skip, sort } = parsePaginationQuery(query, ORDER_SORT_FIELDS);
   const filter = {};
@@ -615,6 +671,7 @@ const updatePharmacyOrderStatus = async (id, nextStatus, pharmacy) => {
 };
 
 module.exports = {
+  listPublicPharmacies,
   listPublicMedicines,
   getPublicMedicineDetail,
   createPharmacy,
@@ -624,6 +681,7 @@ module.exports = {
   updateMedicine,
   deleteMedicine,
   createOrder,
+  listAdminOrders,
   listMyOrders,
   getOrderById,
   updateOrderStatus,

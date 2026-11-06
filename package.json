@@ -10,6 +10,7 @@
     "test:watch": "jest --watch",
     "seed": "node scripts/seed.js",
     "keep-alive": "node scripts/keep-alive.js",
+    "ai:ingest": "node scripts/ingest-knowledge.js",
     "fix:facility-images": "node scripts/fix-facility-image-urls.js"
   },
   "keywords": [

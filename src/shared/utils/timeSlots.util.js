@@ -38,7 +38,33 @@ const normalizeDateString = (dateInput) => {
   return date.toISOString().slice(0, 10);
 };
 
+/** Clinic-local timezone offset (Pakistan, no DST). Slot labels are interpreted in this zone. */
+const CLINIC_UTC_OFFSET = process.env.CLINIC_UTC_OFFSET || '+05:00';
+
+/**
+ * Converts a calendar date (YYYY-MM-DD) and a 12-hour label ("10:30 AM") into the absolute Date.
+ * Returns null when the label is malformed.
+ */
+const slotToInstant = (dateString, timeLabel, offset = CLINIC_UTC_OFFSET) => {
+  const match = String(timeLabel).trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!match) return null;
+
+  let hours = parseInt(match[1], 10);
+  const minutes = parseInt(match[2], 10);
+  const meridiem = match[3].toUpperCase();
+  if (hours < 1 || hours > 12 || minutes > 59) return null;
+  if (meridiem === 'PM' && hours !== 12) hours += 12;
+  if (meridiem === 'AM' && hours === 12) hours = 0;
+
+  const date = new Date(
+    `${dateString}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00${offset}`,
+  );
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
 module.exports = {
+  CLINIC_UTC_OFFSET,
+  slotToInstant,
   parseTimeToMinutes,
   formatMinutesTo12Hour,
   generateTimeSlots,

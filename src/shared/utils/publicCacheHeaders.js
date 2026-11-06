@@ -8,7 +8,7 @@ const PUBLIC_REF_CACHE_CONTROL =
 
 const setPublicReferenceCacheHeaders = (res) => {
   res.set('Cache-Control', PUBLIC_REF_CACHE_CONTROL);
-  res.set('Vary', 'Accept-Encoding');
+  res.vary('Accept-Encoding'); // append: keeps the `Vary: Origin` that CORS adds
   res.removeHeader('Pragma');
   res.removeHeader('Expires');
 };
@@ -18,7 +18,7 @@ const PUBLIC_LISTING_CACHE_CONTROL = 'public, max-age=15, stale-while-revalidate
 
 const setPublicListingCacheHeaders = (res) => {
   res.set('Cache-Control', PUBLIC_LISTING_CACHE_CONTROL);
-  res.set('Vary', 'Accept-Encoding');
+  res.vary('Accept-Encoding'); // append: keeps the `Vary: Origin` that CORS adds
   res.removeHeader('Pragma');
   res.removeHeader('Expires');
 };

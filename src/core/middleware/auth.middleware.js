@@ -8,7 +8,7 @@ const { User } = require('../../modules/users/users.model');
  * locked out within seconds without adding a DB round-trip to every request.
  */
 const ACTIVE_STATUS_TTL_MS = 30 * 1000;
-const activeStatusCache = createMemoryCache({ defaultTtlMs: ACTIVE_STATUS_TTL_MS });
+const activeStatusCache = createMemoryCache({ defaultTtlMs: ACTIVE_STATUS_TTL_MS, maxEntries: 20000 });
 
 const invalidateAuthCache = (userId) => {
   if (userId) activeStatusCache.del(String(userId));

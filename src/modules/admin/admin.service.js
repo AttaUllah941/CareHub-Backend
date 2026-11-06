@@ -95,6 +95,19 @@ const listUsers = async (query) => {
   };
 };
 
+const getUserById = async (id) => {
+  if (!usersRepository.isValidObjectId(id)) {
+    throw new NotFoundError('User not found');
+  }
+
+  const user = await usersRepository.findById(id);
+  if (!user) {
+    throw new NotFoundError('User not found');
+  }
+
+  return { user: toUserResponse(user) };
+};
+
 const updateUserStatus = async (id, isActive) => {
   if (!usersRepository.isValidObjectId(id)) {
     throw new NotFoundError('User not found');
@@ -113,5 +126,6 @@ const updateUserStatus = async (id, isActive) => {
 module.exports = {
   getDashboardStats,
   listUsers,
+  getUserById,
   updateUserStatus,
 };

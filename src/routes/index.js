@@ -30,6 +30,7 @@ const prescriptionsRoutes = require('../modules/prescriptions/prescriptions.rout
 const specialtiesRoutes = require('../modules/specialties/specialties.routes');
 const languagesRoutes = require('../modules/languages/languages.routes');
 const healthQuestionsRoutes = require('../modules/health-questions/health-questions.routes');
+const aiRoutes = require('../modules/ai/ai.routes');
 
 const router = Router();
 
@@ -62,6 +63,7 @@ router.get('/', (_req, res) => {
         'clinics',
         'prescriptions',
         'health-questions',
+        'ai',
       ],
       planned: [],
     },
@@ -99,5 +101,6 @@ router.use('/pharmacy/orders', medicinesPharmacyRoutes);
 router.use('/admin/medicines', medicinesAdminRoutes);
 router.use('/admin', adminRoutes);
 router.use('/health-questions', healthQuestionsRoutes);
+router.use('/ai', aiRoutes);
 
 module.exports = router;

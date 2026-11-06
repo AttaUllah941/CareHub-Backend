@@ -3,6 +3,7 @@ const {
   NotFoundError,
   ConflictError,
 } = require('../../core/errors/AppError');
+const { escapeRegex } = require('../../shared/utils/regex');
 const { UserRole } = require('../../shared/enums/userRole.enum');
 const { slugify } = require('../../shared/utils/slugify');
 const { parsePaginationQuery, buildPaginationMeta } = require('../../core/utils/pagination.util');
@@ -148,7 +149,7 @@ const listPublicProcedures = async (query) => {
   const filter = buildProcedureSearchFilter(query.search);
 
   if (query.category) {
-    filter.category = new RegExp(`^${query.category.trim()}$`, 'i');
+    filter.category = new RegExp(`^${escapeRegex(query.category.trim())}$`, 'i');
   }
 
   const [procedures, total] = await Promise.all([

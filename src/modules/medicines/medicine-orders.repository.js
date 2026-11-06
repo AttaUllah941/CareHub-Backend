@@ -25,6 +25,11 @@ const findByUser = (userId, filter, { skip, limit, sort }) =>
 
 const countByUser = (userId, filter) => MedicineOrder.countDocuments({ userId, ...filter });
 
+const findAll = (filter, { skip, limit, sort }) =>
+  MedicineOrder.find(filter).sort(sort).skip(skip).limit(limit).populate(POPULATE_DEFAULT);
+
+const countAll = (filter) => MedicineOrder.countDocuments(filter);
+
 const pharmacyFilter = (pharmacyId, filter = {}) => ({
   'items.pharmacyId': pharmacyId,
   ...filter,
@@ -51,6 +56,8 @@ const isValidObjectId = (value) => mongoose.Types.ObjectId.isValid(value);
 
 module.exports = {
   findById,
+  findAll,
+  countAll,
   findByUser,
   countByUser,
   findByPharmacy,
